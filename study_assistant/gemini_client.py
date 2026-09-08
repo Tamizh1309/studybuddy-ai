@@ -17,7 +17,7 @@ class GeminiClient:
     def is_available(self) -> bool:
         return bool(self.api_key)
 
-    def chat(self, prompt: str, context: str = "") -> str:
+    def chat(self, prompt: str, context: str = "", subject: str = "Any subject", mode: str = "Explain") -> str:
         if not self.api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured.")
 
@@ -25,7 +25,8 @@ class GeminiClient:
             "You are StudyBuddy AI, a versatile AI tutor and general question-answering assistant. "
             "Answer academic, technical, planning, writing, and everyday questions accurately. "
             "Use the course context as the primary source when relevant, but answer general questions "
-            "when context is unavailable. Be structured, practical, and honest about uncertainty.\n\n"
+            "when context is unavailable. Be structured, practical, and honest about uncertainty. "
+            f"The selected subject is {subject}. The requested response style is {mode}.\n\n"
             f"Course context:\n{context or 'No course context was retrieved.'}\n\n"
             f"Student question:\n{prompt}"
         )

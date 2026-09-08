@@ -27,13 +27,18 @@ class StudyAssistant:
         self.ollama = OllamaClient()
         self.gemini = GeminiClient()
 
-    def answer_question(self, question: str) -> str:
+    def answer_question(
+        self,
+        question: str,
+        subject: str = "Any subject",
+        mode: str = "Explain",
+    ) -> str:
         context = self.knowledge.get_context(question, limit=3)
         try:
-            answer = self.gemini.chat(question, context)
+            answer = self.gemini.chat(question, context, subject, mode)
         except RuntimeError:
             try:
-                answer = self.ollama.chat(question, context)
+                answer = self.ollama.chat(question, context, subject, mode)
             except RuntimeError:
                 answer = self._fallback_answer(question, context)
         self.memory.add_turn(question, answer)

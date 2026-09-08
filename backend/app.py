@@ -41,10 +41,12 @@ def health() -> tuple[dict, int]:
 def answer() -> tuple[dict, int]:
     payload = request.get_json(silent=True) or {}
     question = (payload.get("question") or "").strip()
+    subject = (payload.get("subject") or "Any subject").strip()
+    mode = (payload.get("mode") or "Explain").strip()
     if not question:
         return jsonify({"error": "Question is required."}), 400
 
-    return jsonify({"answer": assistant.answer_question(question)}), 200
+    return jsonify({"answer": assistant.answer_question(question, subject, mode)}), 200
 
 
 @app.route("/api/plan", methods=["POST"])

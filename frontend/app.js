@@ -66,6 +66,8 @@ async function loadOllamaStatus() {
 questionForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const question = document.getElementById('question-input').value.trim();
+  const subject = document.getElementById('subject-input').value;
+  const mode = document.getElementById('mode-input').value;
   if (!question) {
     questionResult.textContent = 'Please type a question first.';
     return;
@@ -73,7 +75,7 @@ questionForm.addEventListener('submit', async (event) => {
 
   questionResult.textContent = 'Thinking...';
   try {
-    const data = await postJson('/api/answer', { question });
+    const data = await postJson('/api/answer', { question, subject, mode });
     questionResult.textContent = data.answer;
     await loadMemory();
   } catch (error) {

@@ -17,6 +17,7 @@ A lightweight AI-powered learning assistant that combines:
 - Optional local Ollama chat using the `nemotron-3-nano:30b` model
 - Optional Gemini API chat using the `gemini-2.5-flash` model
 - General-purpose Q&A for academic, technical, planning, and everyday questions
+- Subject selector and response modes: explain, step-by-step, summary, examples, exam answer
 - Upload `.txt` and `.md` course notes from the browser
 - Track completed topics, study hours, and quizzes
 

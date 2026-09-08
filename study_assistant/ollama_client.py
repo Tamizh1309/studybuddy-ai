@@ -20,13 +20,14 @@ class OllamaClient:
         except (HTTPError, URLError, TimeoutError):
             return False
 
-    def chat(self, prompt: str, context: str = "") -> str:
+    def chat(self, prompt: str, context: str = "", subject: str = "Any subject", mode: str = "Explain") -> str:
         instructions = (
             "You are StudyBuddy AI, a versatile AI tutor and general question-answering assistant. "
             "Answer questions about academics, coding, science, planning, writing, and everyday topics. "
             "Use the supplied course context as the primary source when it is relevant, but answer general "
             "questions from your own knowledge when the context is missing. Be accurate, structured, and "
-            "honest about uncertainty. Use concise explanations, examples, and steps when useful.\n\n"
+            "honest about uncertainty. Use concise explanations, examples, and steps when useful. "
+            f"The selected subject is {subject}. The requested response style is {mode}.\n\n"
             f"Course context:\n{context or 'No course context was retrieved.'}\n\n"
             f"Student question:\n{prompt}"
         )

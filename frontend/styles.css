@@ -106,6 +106,7 @@ form {
 
 textarea,
 input,
+select,
 button {
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -114,10 +115,13 @@ button {
 }
 
 textarea,
-input {
+input,
+select {
   background: rgba(8, 11, 22, .72);
   color: var(--text);
 }
+.assistant-controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+select { color:var(--text); }
 
 button {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -191,4 +195,5 @@ button:hover {
   .nav-actions a { display:none; }
   .stats-row { grid-template-columns:repeat(2,1fr); }
   .hero-actions { flex-wrap:wrap; }
+  .assistant-controls { grid-template-columns:1fr; }
 }

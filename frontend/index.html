@@ -38,6 +38,14 @@
         <section class="card">
           <div class="card-heading"><div><span class="section-label">RAG ASSISTANT</span><h2>Ask your AI tutor</h2></div><span class="round-icon">✦</span></div>
           <form id="question-form">
+            <div class="assistant-controls">
+              <select id="subject-input" aria-label="Subject">
+                <option>Any subject</option><option>Mathematics</option><option>Science</option><option>Computer Science</option><option>Languages</option><option>Business</option><option>History</option><option>Career</option>
+              </select>
+              <select id="mode-input" aria-label="Response style">
+                <option>Explain</option><option>Step-by-step</option><option>Simple summary</option><option>Examples</option><option>Exam answer</option><option>Study plan</option>
+              </select>
+            </div>
             <textarea id="question-input" rows="4" placeholder="Ask about your course material..."></textarea>
             <div class="prompt-chips"><button type="button" class="chip" data-prompt="Explain machine learning in simple terms">Explain simply</button><button type="button" class="chip" data-prompt="Give me an example of artificial intelligence">Give an example</button></div>
             <button type="submit">Get answer <span>→</span></button>
