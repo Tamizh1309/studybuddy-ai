@@ -25,7 +25,7 @@ async function postJson(url, payload) {
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || 'Request failed');
   }
@@ -65,13 +65,14 @@ async function loadOllamaStatus() {
     navStatus.textContent = 'RAG fallback';
   }
 
-  async function loadMaterials() {
-    const response = await fetch('/api/materials');
-    const data = await response.json();
-    materialsResult.innerHTML = data.materials.length
-      ? data.materials.map((name) => `<li>📄 ${name}</li>`).join('')
-      : '<li>No course files indexed yet.</li>';
-  }
+}
+
+async function loadMaterials() {
+  const response = await fetch('/api/materials');
+  const data = await response.json();
+  materialsResult.innerHTML = data.materials.length
+    ? data.materials.map((name) => `<li>📄 ${name}</li>`).join('')
+    : '<li>No course files indexed yet.</li>';
 }
 
 questionForm.addEventListener('submit', async (event) => {
