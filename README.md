@@ -1,5 +1,9 @@
 # StudyBuddy AI
 
+## Live Demo
+
+[Open StudyBuddy AI](https://studybuddy-ai-dlin.onrender.com/)
+
 A lightweight AI-powered learning assistant that combines:
 
 - RAG-style retrieval over course materials
