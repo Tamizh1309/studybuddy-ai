@@ -648,7 +648,10 @@ document.querySelectorAll('.chip').forEach((chip) => {
 });
 
 if (clearChatBtn) {
-  clearChatBtn.addEventListener('click', () => {
+  clearChatBtn.addEventListener('click', async () => {
+    try {
+      await fetch('/api/memory', { method: 'DELETE' });
+    } catch (e) {}
     chatViewport.innerHTML = `
       <div class="chat-message bot-message">
         <div class="msg-avatar">✦</div>
@@ -658,11 +661,12 @@ if (clearChatBtn) {
             <span class="msg-time">Just now</span>
           </div>
           <div class="msg-content">
-            Chat cleared. What topic or concept would you like to explore next?
+            Chat & conversation memory cleared. What topic or concept would you like to explore next?
           </div>
         </div>
       </div>
     `;
+    loadMemory();
   });
 }
 

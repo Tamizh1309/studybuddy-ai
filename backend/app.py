@@ -160,13 +160,16 @@ def flashcards() -> tuple[dict, int]:
 @app.route("/api/summarize", methods=["POST"])
 def summarize() -> tuple[dict, int]:
     payload = request.get_json(silent=True) or {}
-    topic = (payload.get("topic") or "").strip()
-    summary_data = assistant.summarize_material(topic)
+    topic = (payload.get("topic") or payload.get("text") or "").strip()
+    if not topic and (payload.get("topic") == "" or payload.get("text") == ""):
+        return jsonify({"error": "Topic or text is required for summarization."}), 400
+    summary_data = assistant.summarize_material(topic or "artificial intelligence")
     summary_data["key_terms"] = summary_data.get("key_concepts", [])
     return jsonify(summary_data), 200
 
 
 @app.route("/api/pomodoro", methods=["POST"])
+@app.route("/api/pomodoro/complete", methods=["POST"])
 def log_pomodoro() -> tuple[dict, int]:
     """Log completed focus minutes and credit directly to study hours."""
     payload = request.get_json(silent=True) or {}
@@ -246,6 +249,7 @@ def memory_summary() -> tuple[dict, int]:
 
 
 @app.route("/api/memory", methods=["DELETE"])
+@app.route("/api/clear-memory", methods=["POST", "DELETE"])
 def clear_memory() -> tuple[dict, int]:
     assistant.memory.clear()
     return jsonify({"message": "Conversation memory cleared."}), 200
@@ -345,7 +349,7 @@ def material_content(filename: str) -> tuple[dict, int]:
             return jsonify({"error": f"Material '{clean_name}' not found."}), 404
 
     try:
-        content = target_path.read_text(encoding="utf-8")
+        content = target_path.read_text(encoding="utf-8", errors="ignore")
         return jsonify({"filename": target_path.name, "content": content, "size_bytes": len(content)}), 200
     except Exception as exc:
         return jsonify({"error": f"Could not read material: {exc}"}), 500
