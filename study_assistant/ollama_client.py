@@ -12,8 +12,11 @@ class OllamaClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
         self.model = model or os.getenv("OLLAMA_MODEL", "nemotron-3-nano:30b")
+        self.enabled = os.getenv("OLLAMA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
     def is_available(self) -> bool:
+        if not self.enabled:
+            return False
         try:
             with urlopen(f"{self.base_url}/api/tags", timeout=2):
                 return True
@@ -21,6 +24,8 @@ class OllamaClient:
             return False
 
     def chat(self, prompt: str, context: str = "", subject: str = "Any subject", mode: str = "Explain") -> str:
+        if not self.enabled:
+            raise RuntimeError("Ollama is disabled.")
         instructions = (
             "You are StudyBuddy AI, a versatile AI tutor and general question-answering assistant. "
             "Answer questions about academics, coding, science, planning, writing, and everyday topics. "

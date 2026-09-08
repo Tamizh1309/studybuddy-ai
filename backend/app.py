@@ -29,6 +29,16 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 assistant = StudyAssistant(materials_dir=MATERIALS_DIR, memory_path=MEMORY_PATH)
 
 
+@app.errorhandler(413)
+def request_too_large(_error: object) -> tuple[dict, int]:
+    return jsonify({"error": "Upload is too large. The maximum size is 10 MB."}), 413
+
+
+@app.errorhandler(500)
+def internal_error(_error: object) -> tuple[dict, int]:
+    return jsonify({"error": "StudyBuddy AI encountered a server error. Please try again."}), 500
+
+
 @app.route("/")
 def index() -> str:
     return render_template("index.html")

@@ -13,6 +13,8 @@ services:
         value: gemini-2.5-flash
       - key: OLLAMA_MODEL
         value: nemotron-3-nano:30b
+      - key: OLLAMA_ENABLED
+        value: "false"
       - key: GEMINI_API_KEY
         sync: false
       - key: OLLAMA_BASE_URL
