@@ -24,8 +24,43 @@ def test_quiz_generation():
     quiz = assistant.generate_quiz("artificial intelligence", count=2)
 
     assert len(quiz) == 2
-    assert all("question" in question for question in ["question"])
+    assert all("question" in item for item in quiz)
     assert all("answer" in item for item in quiz)
+
+
+def test_quiz_evaluation():
+    assistant = StudyAssistant(materials_dir=Path("materials"), memory_path=Path("memory/test_history.json"))
+    quiz = assistant.generate_quiz("artificial intelligence", count=2)
+    # Give the correct answers
+    user_answers = [q.get("correct_index", 0) for q in quiz]
+    evaluation = assistant.evaluate_quiz_answers("artificial intelligence", quiz, user_answers)
+
+    assert evaluation["total_questions"] == 2
+    assert evaluation["correct_answers"] == 2
+    assert evaluation["percentage"] == 100.0
+    assert "feedback" in evaluation
+    assert len(evaluation["details"]) == 2
+
+
+def test_flashcard_generation():
+    assistant = StudyAssistant(materials_dir=Path("materials"), memory_path=Path("memory/test_history.json"))
+    cards = assistant.generate_flashcards("artificial intelligence", count=4)
+
+    assert len(cards) == 4
+    for card in cards:
+        assert "front" in card
+        assert "back" in card
+        assert "hint" in card
+
+
+def test_material_summarization():
+    assistant = StudyAssistant(materials_dir=Path("materials"), memory_path=Path("memory/test_history.json"))
+    summary = assistant.summarize_material("artificial intelligence")
+
+    assert "summary" in summary
+    assert "key_concepts" in summary
+    assert "takeaways" in summary
+    assert isinstance(summary["takeaways"], list)
 
 
 def test_memory_summary_tracks_history():

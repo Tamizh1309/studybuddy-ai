@@ -3,113 +3,453 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StudyBuddy AI</title>
+    <title>StudyBuddy AI — Agentic Learning Assistant</title>
+    <meta name="description" content="Agentic AI study assistant featuring multi-engine RAG, interactive 3D flashcards, smart quiz grading, and Pomodoro focus tracking." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/styles.css" />
     <link rel="manifest" href="/static/manifest.json" />
-    <meta name="theme-color" content="#080b16" />
+    <meta name="theme-color" content="#080b18" />
   </head>
   <body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
     <div class="container">
-      <nav class="topbar">
-        <div class="brand"><span class="brand-mark">✦</span> StudyBuddy <span>AI</span></div>
-        <div class="nav-actions">
-          <span class="pill">● <span id="nav-status">Checking AI</span></span>
-          <button id="theme-button" class="icon-btn" type="button" aria-label="Toggle dark mode">☼</button>
-          <a href="#workspace">Workspace</a>
-          <a href="#progress">Progress</a>
+      <!-- Top Navigation -->
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-badge">✦</div>
+          <span class="brand-name">StudyBuddy <span class="accent-text">AI</span></span>
+          <span class="agent-tag">AGENTIC</span>
         </div>
-      </nav>
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Agentic AI Project</p>
-          <h1>Your personal <span>AI study partner.</span></h1>
-          <p class="subtitle">
-            Learn faster with grounded answers, focused plans, and practice that adapts to you.
-          </p>
-          <div class="hero-actions"><a class="primary-link" href="#workspace">Start studying <span>→</span></a><span class="hero-note">Powered by RAG + Ollama</span></div>
+
+        <div class="nav-controls">
+          <div class="engine-selector-wrapper">
+            <label for="ai-engine-select" class="sr-only">AI Engine</label>
+            <select id="ai-engine-select" title="Choose AI Provider">
+              <option value="auto">⚡ Engine: Auto Cascade</option>
+              <option value="gemini">✦ Google Gemini Flash</option>
+              <option value="groq">⚡ Groq (Llama 3.3)</option>
+              <option value="ollama">💻 Ollama (Local)</option>
+              <option value="local">📚 Local RAG Only</option>
+            </select>
+          </div>
+
+          <div class="status-pill" id="engine-status-pill">
+            <span class="status-dot"></span>
+            <span id="nav-status">Connecting...</span>
+          </div>
+
+          <button id="theme-button" class="icon-btn" type="button" aria-label="Toggle Theme" title="Toggle theme">
+            <span class="theme-icon">☼</span>
+          </button>
         </div>
       </header>
 
-      <section class="stats-row" id="progress">
-        <div class="stat"><span class="stat-icon purple">◈</span><div><strong id="stat-topics">0</strong><small>Topics completed</small></div></div>
-        <div class="stat"><span class="stat-icon blue">◷</span><div><strong id="stat-hours">0</strong><small>Study hours</small></div></div>
-        <div class="stat"><span class="stat-icon green">✓</span><div><strong id="stat-quizzes">0</strong><small>Quizzes completed</small></div></div>
-        <div class="stat"><span class="stat-icon orange">⚡</span><div><strong>AI</strong><small>Learning mode</small></div></div>
+      <!-- Hero Header -->
+      <section class="hero">
+        <div class="hero-badge">IBM Internship Project — Agentic AI</div>
+        <h1 class="hero-title">Your Autonomous <span class="gradient-text">AI Study Partner</span></h1>
+        <p class="hero-subtitle">
+          Accelerate your learning with grounded RAG answers, active 3D flashcards, smart graded quizzes, and automated focus tracking.
+        </p>
       </section>
 
-      <main class="grid" id="workspace">
-        <section class="card">
-          <div class="card-heading"><div><span class="section-label">RAG ASSISTANT</span><h2>Ask your AI tutor</h2></div><span class="round-icon">✦</span></div>
-          <form id="question-form">
-            <div class="assistant-controls">
-              <select id="subject-input" aria-label="Subject">
-                <option>Any subject</option><option>Mathematics</option><option>Science</option><option>Computer Science</option><option>Languages</option><option>Business</option><option>History</option><option>Career</option>
-              </select>
-              <select id="mode-input" aria-label="Response style">
-                <option>Explain</option><option>Step-by-step</option><option>Simple summary</option><option>Examples</option><option>Exam answer</option><option>Study plan</option>
-              </select>
+      <!-- Stats Momentum Bar -->
+      <section class="stats-row" id="progress-bar">
+        <div class="stat-card">
+          <div class="stat-icon purple-icon">◈</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-topics">0</span>
+            <span class="stat-lbl">Topics Completed</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue-icon">◷</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-hours">0.0</span>
+            <span class="stat-lbl">Study Hours</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green-icon">✓</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-quizzes">0</span>
+            <span class="stat-lbl">Quizzes Taken</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange-icon">⏱</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-focus-sessions">0</span>
+            <span class="stat-lbl">Focus Sessions</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workspace Navigation Tabs -->
+      <nav class="tabs-nav" aria-label="Study tools">
+        <button class="tab-btn active" data-tab="tab-tutor" type="button">
+          <span class="tab-icon">💬</span> AI Tutor
+        </button>
+        <button class="tab-btn" data-tab="tab-planner" type="button">
+          <span class="tab-icon">📅</span> Study Planner
+        </button>
+        <button class="tab-btn" data-tab="tab-quiz" type="button">
+          <span class="tab-icon">📝</span> Interactive Quiz
+        </button>
+        <button class="tab-btn" data-tab="tab-flashcards" type="button">
+          <span class="tab-icon">🗂</span> 3D Flashcards
+        </button>
+        <button class="tab-btn" data-tab="tab-pomodoro" type="button">
+          <span class="tab-icon">⏱</span> Focus Timer
+        </button>
+        <button class="tab-btn" data-tab="tab-library" type="button">
+          <span class="tab-icon">📑</span> Library & Summary
+        </button>
+      </nav>
+
+      <!-- MAIN TABS CONTAINER -->
+      <main class="workspace-area">
+
+        <!-- TAB 1: AI TUTOR -->
+        <section id="tab-tutor" class="tab-content active">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">RAG + MULTI-LLM</span>
+                <h2>Conversational AI Tutor</h2>
+                <p class="section-desc">Ask questions grounded in your course materials or explore broader academic concepts.</p>
+              </div>
+              <div class="action-btn-group">
+                <button id="clear-chat-btn" class="secondary-btn small-btn" type="button">Clear Chat</button>
+              </div>
             </div>
-            <textarea id="question-input" rows="4" placeholder="Ask about your course material..."></textarea>
-            <div class="prompt-chips"><button type="button" class="chip" data-prompt="Explain machine learning in simple terms">Explain simply</button><button type="button" class="chip" data-prompt="Give me an example of artificial intelligence">Give an example</button></div>
-            <button type="submit">Get answer <span>→</span></button>
-          </form>
-          <div id="question-result" class="result-box">Waiting for your question...</div>
-          <button id="speak-button" class="secondary-btn" type="button">🔊 Read answer aloud</button>
+
+            <div class="chat-viewport" id="chat-viewport">
+              <div class="chat-message bot-message">
+                <div class="msg-avatar">✦</div>
+                <div class="msg-body">
+                  <div class="msg-header">
+                    <strong>StudyBuddy AI</strong>
+                    <span class="msg-time">Just now</span>
+                  </div>
+                  <div class="msg-content">
+                    Hello! I'm your AI tutor. Ask me any question about your course notes, or choose a topic below. I can explain step-by-step, give real-world examples, or prepare exam-ready answers.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <form id="question-form" class="chat-input-form">
+              <div class="control-row">
+                <select id="subject-input" aria-label="Subject">
+                  <option>Any subject</option>
+                  <option>Computer Science & AI</option>
+                  <option>Data Science & Math</option>
+                  <option>Software Engineering</option>
+                  <option>Business & Systems</option>
+                  <option>Exam Revision</option>
+                </select>
+
+                <select id="mode-input" aria-label="Response style">
+                  <option>Explain</option>
+                  <option>Step-by-step</option>
+                  <option>Simple summary</option>
+                  <option>Examples</option>
+                  <option>Exam answer</option>
+                </select>
+              </div>
+
+              <div class="prompt-chips">
+                <button type="button" class="chip" data-prompt="Explain the difference between Supervised and Unsupervised Learning">Explain ML Types</button>
+                <button type="button" class="chip" data-prompt="What is Retrieval-Augmented Generation (RAG) and why is it useful?">What is RAG?</button>
+                <button type="button" class="chip" data-prompt="Give me 3 practical examples of Agentic AI workflows in 2026">Agentic AI Examples</button>
+              </div>
+
+              <div class="input-send-row">
+                <textarea id="question-input" rows="2" placeholder="Type your academic or technical question... (Press Enter to send, Shift+Enter for newline)"></textarea>
+                <button type="submit" id="send-btn" class="send-btn">
+                  <span>Send</span> <span class="send-arrow">→</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
 
-        <section class="card">
-          <div class="card-heading"><div><span class="section-label">FOCUS MODE</span><h2>Build a study plan</h2></div><span class="round-icon blue-icon">◷</span></div>
-          <form id="plan-form">
-            <input id="plan-topic" type="text" value="artificial intelligence" placeholder="Topic" />
-            <input id="plan-days" type="number" min="1" max="30" value="5" placeholder="Days" />
-            <button type="submit">Generate plan <span>→</span></button>
-          </form>
-          <ul id="plan-result" class="result-list"></ul>
+        <!-- TAB 2: STUDY PLANNER -->
+        <section id="tab-planner" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">STRUCTURED PATHWAY</span>
+                <h2>AI Study Plan Generator</h2>
+                <p class="section-desc">Generate a structured multi-day curriculum tailored to your course documents and targets.</p>
+              </div>
+              <button id="export-plan-btn" class="secondary-btn small-btn" type="button" style="display:none;">📥 Export Plan (.md)</button>
+            </div>
+
+            <form id="plan-form" class="standard-form">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label for="plan-topic">Topic or Course Subject</label>
+                  <input id="plan-topic" type="text" value="artificial intelligence" placeholder="e.g., Deep Learning, Neural Networks" required />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="plan-days">Duration (Days)</label>
+                  <input id="plan-days" type="number" min="1" max="30" value="5" required />
+                </div>
+                <div class="form-group flex-btn">
+                  <button type="submit" class="action-btn">Build Plan →</button>
+                </div>
+              </div>
+            </form>
+
+            <div id="plan-status-msg" class="status-msg" style="display:none;"></div>
+            <div id="plan-container" class="plan-timeline"></div>
+          </div>
         </section>
 
-        <section class="card">
-          <div class="card-heading"><div><span class="section-label">KNOWLEDGE CHECK</span><h2>Practice with a quiz</h2></div><span class="round-icon green-icon">✓</span></div>
-          <form id="quiz-form">
-            <input id="quiz-topic" type="text" value="artificial intelligence" placeholder="Topic" />
-            <input id="quiz-count" type="number" min="1" max="10" value="3" placeholder="Questions" />
-            <button type="submit">Generate quiz <span>→</span></button>
-          </form>
-          <div id="quiz-result" class="quiz-result"></div>
+        <!-- TAB 3: INTERACTIVE QUIZ -->
+        <section id="tab-quiz" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">KNOWLEDGE ASSESSMENT</span>
+                <h2>Interactive Practice Quiz</h2>
+                <p class="section-desc">Test your understanding with instant grading, score calculation, and detailed explanations.</p>
+              </div>
+              <button id="export-quiz-btn" class="secondary-btn small-btn" type="button" style="display:none;">📥 Export Quiz (.md)</button>
+            </div>
+
+            <form id="quiz-form" class="standard-form">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label for="quiz-topic">Quiz Topic</label>
+                  <input id="quiz-topic" type="text" value="artificial intelligence" placeholder="Topic to quiz on" required />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="quiz-count">Question Count</label>
+                  <input id="quiz-count" type="number" min="1" max="10" value="3" required />
+                </div>
+                <div class="form-group flex-btn">
+                  <button type="submit" class="action-btn">Generate Quiz →</button>
+                </div>
+              </div>
+            </form>
+
+            <div id="quiz-loading" class="status-msg" style="display:none;"></div>
+
+            <!-- Interactive Quiz Taking Container -->
+            <div id="quiz-runner" style="display:none;">
+              <div class="quiz-meta-bar">
+                <span id="quiz-topic-display" class="quiz-topic-badge">Topic</span>
+                <span id="quiz-progress-display" class="quiz-counter">Question 1 of 3</span>
+              </div>
+
+              <div id="quiz-questions-list" class="quiz-questions-container"></div>
+
+              <div class="quiz-controls-footer">
+                <button id="submit-quiz-btn" class="primary-btn" type="button">Submit Answers & Grade Quiz ✓</button>
+              </div>
+            </div>
+
+            <!-- Quiz Evaluation Results -->
+            <div id="quiz-results-card" class="quiz-score-card" style="display:none;"></div>
+          </div>
         </section>
 
-        <section class="card">
-          <div class="card-heading"><div><span class="section-label">YOUR LIBRARY</span><h2>Add course material</h2></div><span class="round-icon orange-icon">↑</span></div>
-          <form id="upload-form">
-            <input id="material-file" type="file" accept=".txt,.md,.pdf,.docx,.pptx" />
-            <button type="submit">Upload notes</button>
-          </form>
-          <div id="upload-result" class="result-box">Add TXT, Markdown, PDF, DOCX, or PPTX notes (10 MB max).</div>
-          <ul id="materials-result" class="result-list compact-list"></ul>
+        <!-- TAB 4: 3D FLASHCARDS -->
+        <section id="tab-flashcards" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">SPACED REPETITION</span>
+                <h2>Active Recall 3D Flashcards</h2>
+                <p class="section-desc">Click or press Space to flip the card. Use keyboard arrows to navigate.</p>
+              </div>
+              <div class="action-btn-group">
+                <button id="shuffle-cards-btn" class="secondary-btn small-btn" type="button">🔀 Shuffle</button>
+                <button id="export-cards-btn" class="secondary-btn small-btn" type="button">📥 Export Deck</button>
+              </div>
+            </div>
+
+            <form id="flashcard-form" class="standard-form">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label for="flashcard-topic">Flashcard Topic</label>
+                  <input id="flashcard-topic" type="text" value="artificial intelligence" placeholder="Topic for flashcards" required />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="flashcard-count">Card Count</label>
+                  <input id="flashcard-count" type="number" min="2" max="12" value="6" required />
+                </div>
+                <div class="form-group flex-btn">
+                  <button type="submit" class="action-btn">Create Deck →</button>
+                </div>
+              </div>
+            </form>
+
+            <div id="flashcard-status" class="status-msg" style="display:none;"></div>
+
+            <div class="flashcard-arena">
+              <!-- 3D Card Scene -->
+              <div class="scene">
+                <div class="flashcard-3d" id="flashcard-element" tabindex="0" role="button" aria-label="Flip flashcard">
+                  <div class="card-face card-front">
+                    <div class="card-tag" id="card-tag">Topic</div>
+                    <div class="card-prompt" id="card-front-text">Generate a deck to start revising.</div>
+                    <div class="card-hint-box" id="card-hint-box">💡 Click to flip for answer</div>
+                  </div>
+                  <div class="card-face card-back">
+                    <div class="card-tag answer-tag">ANSWER</div>
+                    <div class="card-answer" id="card-back-text">Answer will appear here.</div>
+                    <div class="card-hint-box">↩ Click to flip back</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deck Navigation -->
+              <div class="deck-controls">
+                <button id="prev-card-btn" class="deck-btn" type="button" title="Previous Card (Left Arrow)">← Prev</button>
+                <span id="deck-counter" class="deck-counter">0 / 0</span>
+                <button id="next-card-btn" class="deck-btn" type="button" title="Next Card (Right Arrow)">Next →</button>
+              </div>
+
+              <div class="mastery-actions">
+                <button id="mark-review-btn" class="mastery-btn review-btn" type="button">Needs Practice</button>
+                <button id="mark-mastered-btn" class="mastery-btn master-btn" type="button">Mastered ✓</button>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <section class="card">
-          <div class="card-heading"><div><span class="section-label">YOUR MOMENTUM</span><h2>Track your progress</h2></div><span class="round-icon">↗</span></div>
-          <form id="progress-form">
-            <input id="completed-topics" type="number" min="0" placeholder="Completed topics" />
-            <input id="study-hours" type="number" min="0" step="0.5" placeholder="Study hours" />
-            <input id="quizzes-completed" type="number" min="0" placeholder="Quizzes completed" />
-            <button type="submit">Save progress</button>
-          </form>
-          <div id="progress-result" class="result-box">Loading progress...</div>
+        <!-- TAB 5: POMODORO FOCUS TIMER -->
+        <section id="tab-pomodoro" class="tab-content">
+          <div class="card glass-card pomodoro-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">PRODUCTIVITY SCIENCE</span>
+                <h2>Pomodoro Focus Session</h2>
+                <p class="section-desc">Completed focus intervals are automatically logged to your total study hours!</p>
+              </div>
+              <div class="timer-mode-pills">
+                <button class="timer-mode-btn active" data-mode="focus" data-minutes="25" type="button">Focus (25m)</button>
+                <button class="timer-mode-btn" data-mode="short-break" data-minutes="5" type="button">Short Break (5m)</button>
+                <button class="timer-mode-btn" data-mode="long-break" data-minutes="15" type="button">Long Break (15m)</button>
+              </div>
+            </div>
+
+            <div class="timer-centerpiece">
+              <div class="timer-circle">
+                <svg class="timer-ring" width="260" height="260">
+                  <circle class="timer-ring-bg" stroke="rgba(255,255,255,0.06)" stroke-width="8" fill="transparent" r="115" cx="130" cy="130"></circle>
+                  <circle class="timer-ring-progress" id="timer-progress-circle" stroke="var(--primary)" stroke-width="8" stroke-linecap="round" fill="transparent" r="115" cx="130" cy="130"></circle>
+                </svg>
+                <div class="timer-time-display">
+                  <span id="timer-digits" class="digits">25:00</span>
+                  <span id="timer-label" class="phase-label">Deep Focus</span>
+                </div>
+              </div>
+
+              <div class="timer-buttons">
+                <button id="timer-toggle-btn" class="primary-btn large-btn" type="button">Start Session</button>
+                <button id="timer-reset-btn" class="secondary-btn" type="button">Reset</button>
+              </div>
+            </div>
+
+            <div id="pomodoro-log-feedback" class="pomodoro-feedback"></div>
+          </div>
         </section>
+
+        <!-- TAB 6: LIBRARY & SUMMARIZER -->
+        <section id="tab-library" class="tab-content">
+          <div class="card-grid-2">
+            <!-- Course Materials Uploader -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <div>
+                  <span class="section-tag">KNOWLEDGE REPOSITORY</span>
+                  <h2>Course Materials</h2>
+                  <p class="section-desc">Add textbooks, slides, and class notes to ground your AI assistant.</p>
+                </div>
+              </div>
+
+              <form id="upload-form" class="upload-zone-form">
+                <label for="material-file" class="dropzone">
+                  <span class="dropzone-icon">📁</span>
+                  <span class="dropzone-title">Choose or drag course document</span>
+                  <span class="dropzone-desc">Supports .txt, .md, .pdf, .docx, .pptx (Max 10 MB)</span>
+                  <input id="material-file" type="file" accept=".txt,.md,.pdf,.docx,.pptx" />
+                </label>
+                <button type="submit" class="action-btn" id="upload-btn">Ingest into RAG Base</button>
+              </form>
+
+              <div id="upload-result" class="status-msg" style="display:none;"></div>
+
+              <div class="library-header">
+                <h3>Indexed Documents (<span id="materials-count">0</span>)</h3>
+                <button id="refresh-materials-btn" class="icon-link-btn" type="button">↻ Refresh</button>
+              </div>
+              <ul id="materials-result" class="materials-list"></ul>
+            </div>
+
+            <!-- Automatic Summarizer & Glossary -->
+            <div class="card glass-card">
+              <div class="card-header">
+                <div>
+                  <span class="section-tag">AI SYNTHESIS</span>
+                  <h2>Document Summarizer</h2>
+                  <p class="section-desc">Generate executive summaries, key terms, and revision cheat-sheets.</p>
+                </div>
+                <button id="export-summary-btn" class="secondary-btn small-btn" type="button" style="display:none;">📥 Export (.md)</button>
+              </div>
+
+              <form id="summary-form" class="standard-form">
+                <div class="input-send-row">
+                  <input id="summary-topic-input" type="text" placeholder="Topic to summarize (or leave blank for all materials)" />
+                  <button type="submit" class="action-btn">Summarize</button>
+                </div>
+              </form>
+
+              <div id="summary-loading" class="status-msg" style="display:none;"></div>
+              <div id="summary-output" class="summary-output-container">
+                <p class="empty-state-text">Click "Summarize" to generate a quick study brief and key terminology glossary from your notes.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
 
-      <section class="card memory-card">
-        <div class="card-heading"><div><span class="section-label">MEMORY</span><h2>Recent conversations</h2></div></div>
-        <p id="ollama-status" class="status-text">Checking Ollama status...</p>
-        <div class="memory-actions">
-          <button id="memory-button" class="secondary-btn" type="button">Refresh memory</button>
-          <button id="clear-memory-button" class="danger-btn" type="button">Clear memory</button>
+      <!-- History and Memory Drawer Section -->
+      <section class="card glass-card memory-drawer" id="memory-section">
+        <div class="card-header">
+          <div>
+            <span class="section-tag">PERSISTENT CONTEXT</span>
+            <h2>Agent Conversation History</h2>
+            <p id="ollama-status" class="status-text">Checking AI provider...</p>
+          </div>
+          <div class="action-btn-group">
+            <button id="memory-button" class="secondary-btn small-btn" type="button">Refresh Memory</button>
+            <button id="clear-memory-button" class="danger-btn small-btn" type="button">Clear Memory</button>
+          </div>
         </div>
         <pre id="memory-result">No conversation history yet.</pre>
       </section>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <div>StudyBuddy AI — IBM Internship Project (Agentic AI)</div>
+        <div class="footer-links">
+          <span>Powered by RAG • Gemini Flash • Groq Cloud • Ollama</span>
+        </div>
+      </footer>
     </div>
 
+    <!-- Application Script -->
     <script src="/static/app.js"></script>
   </body>
 </html>
