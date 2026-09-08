@@ -52,6 +52,20 @@ python backend/app.py
 http://localhost:5000
 ```
 
+## Deploy on Render
+
+The repository includes `render.yaml` for one-click Render deployment:
+
+1. Open [Render](https://render.com) and sign in with GitHub.
+2. Select **New +** → **Blueprint**.
+3. Choose `Tamizh1309/studybuddy-ai`.
+4. Add `GEMINI_API_KEY` in the Render environment settings if Gemini is enabled.
+5. Deploy. Render provides a public HTTPS URL such as:
+   `https://studybuddy-ai.onrender.com`
+
+The free service may sleep when idle. The app still works with local RAG when no cloud
+AI provider key is configured.
+
 ## Ollama setup
 
 Ollama runs locally and normally does not require an API key. Install Ollama, then download
