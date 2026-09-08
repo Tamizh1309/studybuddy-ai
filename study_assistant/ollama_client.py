@@ -12,7 +12,9 @@ class OllamaClient:
     def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
         self.model = model or os.getenv("OLLAMA_MODEL", "nemotron-3-nano:30b")
-        self.enabled = os.getenv("OLLAMA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+        render_hosted = os.getenv("RENDER", "").lower() == "true"
+        configured_enabled = os.getenv("OLLAMA_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+        self.enabled = configured_enabled and not render_hosted
 
     def is_available(self) -> bool:
         if not self.enabled:
