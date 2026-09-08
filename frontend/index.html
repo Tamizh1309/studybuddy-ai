@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyBuddy AI</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="manifest" href="/static/manifest.json" />
+    <meta name="theme-color" content="#080b16" />
   </head>
   <body>
     <div class="container">
@@ -12,6 +14,7 @@
         <div class="brand"><span class="brand-mark">✦</span> StudyBuddy <span>AI</span></div>
         <div class="nav-actions">
           <span class="pill">● <span id="nav-status">Checking AI</span></span>
+          <button id="theme-button" class="icon-btn" type="button" aria-label="Toggle dark mode">☼</button>
           <a href="#workspace">Workspace</a>
           <a href="#progress">Progress</a>
         </div>
@@ -51,6 +54,7 @@
             <button type="submit">Get answer <span>→</span></button>
           </form>
           <div id="question-result" class="result-box">Waiting for your question...</div>
+          <button id="speak-button" class="secondary-btn" type="button">🔊 Read answer aloud</button>
         </section>
 
         <section class="card">
@@ -76,10 +80,10 @@
         <section class="card">
           <div class="card-heading"><div><span class="section-label">YOUR LIBRARY</span><h2>Add course material</h2></div><span class="round-icon orange-icon">↑</span></div>
           <form id="upload-form">
-            <input id="material-file" type="file" accept=".txt,.md" />
+            <input id="material-file" type="file" accept=".txt,.md,.pdf,.docx,.pptx" />
             <button type="submit">Upload notes</button>
           </form>
-          <div id="upload-result" class="result-box">Add .txt or .md course notes.</div>
+          <div id="upload-result" class="result-box">Add TXT, Markdown, PDF, DOCX, or PPTX notes (10 MB max).</div>
           <ul id="materials-result" class="result-list compact-list"></ul>
         </section>
 

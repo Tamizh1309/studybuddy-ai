@@ -15,6 +15,8 @@ const progressResult = document.getElementById('progress-result');
 const ollamaStatus = document.getElementById('ollama-status');
 const navStatus = document.getElementById('nav-status');
 const materialsResult = document.getElementById('materials-result');
+const themeButton = document.getElementById('theme-button');
+const speakButton = document.getElementById('speak-button');
 
 async function postJson(url, payload) {
   const response = await fetch(url, {
@@ -142,7 +144,7 @@ uploadForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const file = document.getElementById('material-file').files[0];
   if (!file) {
-    uploadResult.textContent = 'Choose a .txt or .md file first.';
+    uploadResult.textContent = 'Choose a TXT, Markdown, PDF, DOCX, or PPTX file first.';
     return;
   }
   const formData = new FormData();
@@ -190,3 +192,25 @@ loadMemory();
 loadProgress();
 loadOllamaStatus();
 loadMaterials();
+
+themeButton.addEventListener('click', () => {
+  document.body.classList.toggle('light-theme');
+  localStorage.setItem('studybuddy-theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+});
+
+speakButton.addEventListener('click', () => {
+  if (!('speechSynthesis' in window)) {
+    questionResult.textContent = 'Text-to-speech is not supported in this browser.';
+    return;
+  }
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(questionResult.textContent));
+});
+
+if (localStorage.getItem('studybuddy-theme') === 'light') {
+  document.body.classList.add('light-theme');
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/service-worker.js').catch(() => {});
+}

@@ -11,6 +11,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from study_assistant import StudyAssistant
+from study_assistant.document_parser import SUPPORTED_EXTENSIONS, extract_text
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -24,6 +25,7 @@ app = Flask(
     static_url_path="/static",
     template_folder=str(FRONTEND_DIR),
 )
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 assistant = StudyAssistant(materials_dir=MATERIALS_DIR, memory_path=MEMORY_PATH)
 
 
@@ -38,7 +40,10 @@ def health() -> tuple[dict, int]:
         {
             "status": "ok",
             "app": "StudyBuddy AI",
-            "features": ["universal_qa", "rag", "study_plans", "quizzes", "progress", "uploads"],
+            "features": [
+                "universal_qa", "rag", "study_plans", "quizzes", "progress",
+                "uploads", "pdf_docx_pptx_ingestion", "pwa", "text_to_speech",
+            ],
         }
     ), 200
 
@@ -107,11 +112,20 @@ def upload_material() -> tuple[dict, int]:
     uploaded = request.files.get("file")
     if uploaded is None or not uploaded.filename:
         return jsonify({"error": "A course file is required."}), 400
-    if not uploaded.filename.lower().endswith((".txt", ".md")):
-        return jsonify({"error": "Only .txt and .md files are supported."}), 400
+    filename = Path(uploaded.filename).name
+    if not filename.lower().endswith(SUPPORTED_EXTENSIONS):
+        return jsonify({"error": "Supported files: .txt, .md, .pdf, .docx, .pptx."}), 400
 
-    destination = MATERIALS_DIR / Path(uploaded.filename).name
-    destination.write_text(uploaded.read().decode("utf-8", errors="ignore"), encoding="utf-8")
+    try:
+        text = extract_text(filename, uploaded.read()).strip()
+    except (ValueError, ImportError, OSError) as exc:
+        return jsonify({"error": f"Could not read this file: {exc}"}), 400
+    if not text:
+        return jsonify({"error": "No readable text was found in this file."}), 400
+
+    destination = MATERIALS_DIR / filename
+    destination = destination.with_suffix(".md")
+    destination.write_text(text, encoding="utf-8")
     assistant.knowledge.chunks.clear()
     assistant.knowledge._index_materials()
     return jsonify({"message": f"{destination.name} uploaded successfully."}), 201

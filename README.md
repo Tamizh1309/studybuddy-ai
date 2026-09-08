@@ -22,8 +22,9 @@ A lightweight AI-powered learning assistant that combines:
 - Optional Gemini API chat using the `gemini-2.5-flash` model
 - General-purpose Q&A for academic, technical, planning, and everyday questions
 - Subject selector and response modes: explain, step-by-step, summary, examples, exam answer
-- Upload `.txt` and `.md` course notes from the browser
+- Upload `.txt`, `.md`, `.pdf`, `.docx`, and `.pptx` course notes from the browser (10 MB max)
 - Track completed topics, study hours, and quizzes
+- Installable PWA shell with browser-native text-to-speech and dark/light theme toggle
 
 ## Project layout
 
@@ -126,7 +127,7 @@ python main.py --quiz --topic "artificial intelligence" --count 3
 - `GET /api/health`
 - `GET /api/materials`
 - `GET /api/ollama-status`
-- `POST /api/upload` with a multipart `.txt` or `.md` file
+- `POST /api/upload` with a multipart `.txt`, `.md`, `.pdf`, `.docx`, or `.pptx` file
 - `GET/POST /api/progress`
 
 ## Running tests
