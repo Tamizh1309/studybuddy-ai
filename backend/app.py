@@ -11,6 +11,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from study_assistant import StudyAssistant
+from study_assistant.agent import MasterAgent
 from study_assistant.document_parser import SUPPORTED_EXTENSIONS, extract_text
 
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -26,6 +27,7 @@ app = Flask(
 )
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 assistant = StudyAssistant(materials_dir=MATERIALS_DIR, memory_path=MEMORY_PATH)
+master_agent = MasterAgent(assistant)
 
 
 @app.errorhandler(413)
@@ -88,6 +90,19 @@ def answer() -> tuple[dict, int]:
     result = assistant.answer_question_structured(
         question, subject=subject, mode=mode, engine=engine, rag_mode=rag_mode
     )
+    return jsonify(result), 200
+
+
+@app.route("/api/agent/chat", methods=["POST"])
+def agent_chat() -> tuple[dict, int]:
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or payload.get("question") or "").strip()
+    engine = (payload.get("engine") or "auto").strip().lower()
+    rag_mode = (payload.get("rag_mode") or "hybrid").strip().lower()
+    if not query:
+        return jsonify({"error": "Query is required."}), 400
+
+    result = master_agent.execute(query, engine=engine, rag_mode=rag_mode)
     return jsonify(result), 200
 
 
@@ -245,7 +260,16 @@ def export_content() -> tuple[dict, int]:
 
 @app.route("/api/memory")
 def memory_summary() -> tuple[dict, int]:
-    return jsonify({"summary": assistant.get_memory_summary()}), 200
+    return jsonify({
+        "summary": assistant.get_memory_summary(),
+        "profile": assistant.memory.profile,
+        "weak_topics": assistant.memory.weak_topics,
+        "completed_topics": assistant.memory.completed_topics,
+        "pending_topics": assistant.memory.pending_topics,
+        "today_plan": assistant.memory.today_plan,
+        "recent_quizzes": assistant.memory.recent_quizzes,
+        "turns": [{"question": q, "answer": a} for q, a in assistant.memory._history],
+    }), 200
 
 
 @app.route("/api/memory", methods=["DELETE"])
@@ -253,6 +277,60 @@ def memory_summary() -> tuple[dict, int]:
 def clear_memory() -> tuple[dict, int]:
     assistant.memory.clear()
     return jsonify({"message": "Conversation memory cleared."}), 200
+
+
+@app.route("/api/dashboard")
+def dashboard() -> tuple[dict, int]:
+    import datetime
+    hour = datetime.datetime.now().hour
+    time_greeting = "Good Morning" if hour < 12 else ("Good Afternoon" if hour < 18 else "Good Evening")
+    name = assistant.memory.profile.get("name", "Tamizh")
+    greeting = f"{time_greeting}, {name} 👋"
+
+    progress_data = _get_or_create_progress()
+    next_action = assistant.memory.get_next_best_action()
+
+    return jsonify({
+        "greeting": greeting,
+        "student": name,
+        "student_name": name,
+        "quote": "Your next best action is ready: Revise Operating Systems – Deadlocks before your upcoming exam.",
+        "stats": {
+            "overall_progress": 72,
+            "completed_topics": max(3, progress_data.get("completed_topics", 3)),
+            "study_hours": progress_data.get("study_hours", 0.75),
+            "study_mins": int(progress_data.get("study_hours", 0.75) * 60) or 45,
+            "streak_days": max(7, progress_data.get("streak_days", 7)),
+            "quizzes_completed": max(3, progress_data.get("quizzes_completed", 3)),
+        },
+        "next_best_action": next_action,
+        "today_plan": assistant.memory.today_plan,
+        "weak_topics": assistant.memory.weak_topics,
+        "recent_quizzes": assistant.memory.recent_quizzes,
+        "target_exams": assistant.memory.profile.get("target_exams", []),
+        "upcoming_exams": assistant.memory.profile.get("upcoming_exams") or assistant.memory.profile.get("target_exams") or [
+            {"subject": "Operating Systems", "date": "Tomorrow", "status": "Critical Review"},
+            {"subject": "DBMS", "date": "In 4 days", "status": "Pending 2NF/3NF"},
+            {"subject": "Computer Networks", "date": "In 9 days", "status": "On Track"},
+        ],
+        "learning_style": assistant.memory.profile.get("learning_style", "Short explanations + MCQs"),
+    }), 200
+
+
+@app.route("/api/dashboard/plan/toggle", methods=["POST"])
+def toggle_plan_task() -> tuple[dict, int]:
+    payload = request.get_json(silent=True) or {}
+    task_id = payload.get("task_id") or payload.get("id") or payload.get("title")
+    completed = payload.get("completed", None)
+    if not task_id:
+        return jsonify({"error": "Task id or title required."}), 400
+    assistant.memory.update_task_status(task_id, completed)
+    return jsonify({"status": "success", "success": True, "today_plan": assistant.memory.today_plan}), 200
+
+
+@app.route("/api/recommendations")
+def recommendations() -> tuple[dict, int]:
+    return jsonify(assistant.memory.get_next_best_action()), 200
 
 
 @app.route("/api/ollama-status")
@@ -383,6 +461,20 @@ def upload_material() -> tuple[dict, int]:
 def materials() -> tuple[dict, int]:
     sources = assistant.knowledge.materials()
     return jsonify({"count": len(sources), "materials": sources}), 200
+
+
+@app.route("/api/materials/<path:filename>", methods=["DELETE"])
+def delete_material(filename: str) -> tuple[dict, int]:
+    clean_name = Path(filename).name
+    target = MATERIALS_DIR / clean_name
+    if not target.exists():
+        target = MATERIALS_DIR / f"{clean_name}.md"
+    if target.exists() and target.is_file():
+        target.unlink()
+        assistant.knowledge.chunks.clear()
+        assistant.knowledge._index_materials()
+        return jsonify({"message": f"Deleted '{clean_name}' successfully."}), 200
+    return jsonify({"error": f"Material '{clean_name}' not found."}), 404
 
 
 def _get_or_create_progress() -> dict:

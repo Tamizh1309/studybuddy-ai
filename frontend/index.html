@@ -113,14 +113,11 @@
 
       <!-- Workspace Navigation Tabs -->
       <nav class="tabs-nav" aria-label="Study tools">
-        <button class="tab-btn active" data-tab="tab-tutor" type="button">
+        <button class="tab-btn active" data-tab="tab-dashboard" type="button">
+          <span class="tab-icon">🏠</span> Dashboard
+        </button>
+        <button class="tab-btn" data-tab="tab-tutor" type="button">
           <span class="tab-icon">💬</span> AI Tutor
-        </button>
-        <button class="tab-btn" data-tab="tab-architect" type="button">
-          <span class="tab-icon">🤖</span> Agent Architect
-        </button>
-        <button class="tab-btn" data-tab="tab-conceptmap" type="button">
-          <span class="tab-icon">🕸️</span> Concept Map
         </button>
         <button class="tab-btn" data-tab="tab-planner" type="button">
           <span class="tab-icon">📅</span> Study Planner
@@ -131,6 +128,12 @@
         <button class="tab-btn" data-tab="tab-flashcards" type="button">
           <span class="tab-icon">🗂</span> 3D Flashcards
         </button>
+        <button class="tab-btn" data-tab="tab-architect" type="button">
+          <span class="tab-icon">🤖</span> Agent Architect
+        </button>
+        <button class="tab-btn" data-tab="tab-conceptmap" type="button">
+          <span class="tab-icon">🕸️</span> Concept Map
+        </button>
         <button class="tab-btn" data-tab="tab-code" type="button">
           <span class="tab-icon">💻</span> Code Explainer
         </button>
@@ -138,15 +141,124 @@
           <span class="tab-icon">⏱</span> Focus Timer
         </button>
         <button class="tab-btn" data-tab="tab-library" type="button">
-          <span class="tab-icon">📑</span> Library & Summary
+          <span class="tab-icon">📑</span> Library & RAG
+        </button>
+        <button class="tab-btn" data-tab="tab-memory" type="button">
+          <span class="tab-icon">🧠</span> Learning Memory
         </button>
       </nav>
 
       <!-- MAIN TABS CONTAINER -->
       <main class="workspace-area">
 
+        <!-- TAB 0: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-content active">
+          <!-- Welcome Hero Banner -->
+          <div class="dashboard-hero card glass-card">
+            <div class="dash-hero-content">
+              <div class="dash-hero-text">
+                <span class="section-tag">AGENTIC LEARNING SUITE</span>
+                <h2 id="dash-greeting">Good Evening, Tamizh 👋</h2>
+                <p class="dash-subtitle">What would you like to study today? Your AI Master Agent is ready to plan, retrieve, and quiz.</p>
+              </div>
+              <div class="dash-quick-ask">
+                <form id="dash-ask-form" class="quick-ask-form">
+                  <input type="text" id="dash-ask-input" placeholder="Ask Study Buddy anything (e.g. 'Tomorrow I have OS exam. Give me a revision plan and then quiz me on deadlocks.')..." />
+                  <button type="submit" class="action-btn">Launch Agent →</button>
+                </form>
+                <div class="quick-prompts">
+                  <span class="quick-tag">Quick Goals:</span>
+                  <button type="button" class="quick-goal-btn" data-goal="Tomorrow I have OS exam. Give me a revision plan and then quiz me on deadlocks.">🚀 OS Exam Cram (Plan + Quiz)</button>
+                  <button type="button" class="quick-goal-btn" data-goal="What are my weak topics and what should I study next?">🧠 Review Weak Areas</button>
+                  <button type="button" class="quick-goal-btn" data-goal="Create a 7-day DBMS normalization study plan.">📅 7-Day DBMS Plan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spotlight: NEXT BEST ACTION -->
+          <div class="nba-card glass-card">
+            <div class="nba-header">
+              <div class="nba-tag-wrapper">
+                <span class="nba-badge">⚡ NEXT BEST ACTION</span>
+                <span class="nba-priority">HIGH PRIORITY • 25 MINS</span>
+              </div>
+              <span class="nba-reason-tag" id="nba-sub-reason">Based on 55% quiz score & exam in 2 days</span>
+            </div>
+            <div class="nba-body">
+              <div class="nba-title-group">
+                <h3 id="nba-action-title">Revise Operating Systems – Deadlocks</h3>
+                <p id="nba-action-desc">Your last quiz score was 55% and your OS end-semester exam is in 2 days. Master Banker's Algorithm and Coffman conditions.</p>
+              </div>
+              <button id="nba-action-btn" class="action-btn glow-btn" type="button">Start Revision →</button>
+            </div>
+          </div>
+
+          <!-- Dashboard Grid: 2 Columns -->
+          <div class="dashboard-grid">
+            <!-- Left Column: Study Plan & Upcoming Exams -->
+            <div class="dash-col">
+              <!-- Today's Study Plan -->
+              <div class="card glass-card">
+                <div class="card-header">
+                  <div>
+                    <span class="section-tag">TODAY'S TARGETS</span>
+                    <h3>Today's Study Plan</h3>
+                  </div>
+                  <span class="plan-progress-pill" id="dash-plan-ratio">2/4 Done</span>
+                </div>
+                <div class="dash-tasks-list" id="dash-tasks-container">
+                  <!-- Rendered dynamically by app.js -->
+                </div>
+              </div>
+
+              <!-- Upcoming Exams -->
+              <div class="card glass-card">
+                <div class="card-header">
+                  <div>
+                    <span class="section-tag">ACADEMIC SCHEDULE</span>
+                    <h3>Upcoming Exams</h3>
+                  </div>
+                </div>
+                <div class="upcoming-exams-list" id="dash-exams-container">
+                  <!-- Rendered dynamically by app.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Weak Topics & Recent Quizzes -->
+            <div class="dash-col">
+              <!-- Weak Topics Spotlight -->
+              <div class="card glass-card">
+                <div class="card-header">
+                  <div>
+                    <span class="section-tag">MASTERY GAPS</span>
+                    <h3>Weak Topics (Needs Revision)</h3>
+                  </div>
+                </div>
+                <div class="weak-topics-list" id="dash-weak-container">
+                  <!-- Rendered dynamically by app.js -->
+                </div>
+              </div>
+
+              <!-- Recent Quiz Performance -->
+              <div class="card glass-card">
+                <div class="card-header">
+                  <div>
+                    <span class="section-tag">ASSESSMENT METRICS</span>
+                    <h3>Recent Quiz Performance</h3>
+                  </div>
+                </div>
+                <div class="recent-quizzes-list" id="dash-quiz-history-container">
+                  <!-- Rendered dynamically by app.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- TAB 1: AI TUTOR -->
-        <section id="tab-tutor" class="tab-content active">
+        <section id="tab-tutor" class="tab-content">
           <div class="card glass-card">
             <div class="card-header">
               <div>
@@ -195,9 +307,10 @@
               </div>
 
               <div class="prompt-chips">
-                <button type="button" class="chip" data-prompt="Explain the difference between Supervised and Unsupervised Learning">Explain ML Types</button>
-                <button type="button" class="chip" data-prompt="What is Retrieval-Augmented Generation (RAG) and why is it useful?">What is RAG?</button>
-                <button type="button" class="chip" data-prompt="Give me 3 practical examples of Agentic AI workflows in 2026">Agentic AI Examples</button>
+                <button type="button" class="chip highlight-chip" data-prompt="Tomorrow I have OS exam. Give me a revision plan and then quiz me on deadlocks.">🚀 OS Exam Cram (Plan + Quiz Demo)</button>
+                <button type="button" class="chip" data-prompt="What did I study yesterday and what are my weak topics?">🧠 Memory & Weak Topics</button>
+                <button type="button" class="chip" data-prompt="What should I study next based on my performance?">⚡ Next Best Action</button>
+                <button type="button" class="chip" data-prompt="Explain deadlock in simple terms from my uploaded OS notes.">📚 Explain Deadlock (RAG)</button>
               </div>
 
               <div class="input-send-row">
@@ -622,23 +735,71 @@
           </div>
         </section>
 
-      </main>
+        <!-- TAB 7: LEARNING MEMORY -->
+        <section id="tab-memory" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">PERSISTENT AGENT CONTEXT</span>
+                <h2>Personal Learning Memory & Profile</h2>
+                <p class="section-desc">StudyBuddy AI maintains your non-sensitive learning preferences, academic goals, and quiz weaknesses across sessions.</p>
+                <p id="ollama-status" class="status-text">Checking AI provider...</p>
+              </div>
+              <div class="action-btn-group">
+                <button id="memory-button" class="secondary-btn small-btn" type="button">↻ Refresh Memory</button>
+                <button id="clear-memory-button" class="danger-btn small-btn" type="button">🗑️ Clear Memory</button>
+              </div>
+            </div>
 
-      <!-- History and Memory Drawer Section -->
-      <section class="card glass-card memory-drawer" id="memory-section">
-        <div class="card-header">
-          <div>
-            <span class="section-tag">PERSISTENT CONTEXT</span>
-            <h2>Agent Conversation History</h2>
-            <p id="ollama-status" class="status-text">Checking AI provider...</p>
+            <div class="memory-grid">
+              <!-- Student Profile Card -->
+              <div class="memory-subcard">
+                <div class="mem-subcard-header">
+                  <span class="mem-icon">👤</span>
+                  <h4>Student Profile & Goals</h4>
+                </div>
+                <div class="profile-props" id="mem-profile-display">
+                  <div class="profile-prop-row">
+                    <span class="prop-label">Student Name:</span>
+                    <span class="prop-val" id="mem-val-name">Tamizh</span>
+                  </div>
+                  <div class="profile-prop-row">
+                    <span class="prop-label">Primary Goal:</span>
+                    <span class="prop-val">End-Semester Exam Excellence (OS, DBMS, CN)</span>
+                  </div>
+                  <div class="profile-prop-row">
+                    <span class="prop-label">Study Pace:</span>
+                    <span class="prop-val">25 min Pomodoro Deep Focus</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Learning Style Card -->
+              <div class="memory-subcard">
+                <div class="mem-subcard-header">
+                  <span class="mem-icon">🎯</span>
+                  <h4>Study Style Preferences</h4>
+                </div>
+                <p class="mem-style-desc" id="mem-style-display">
+                  "Prefers short explanations, structured breakdown steps, and active-recall diagnostic MCQs."
+                </p>
+                <div class="mem-tags">
+                  <span class="mem-tag">Active Recall</span>
+                  <span class="mem-tag">Pomodoro: 25 mins</span>
+                  <span class="mem-tag">Strict RAG Grounding</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Conversation & Sessions Log -->
+            <div class="memory-history-box">
+              <h4 class="history-title">Recent Learning Turns & Context History</h4>
+              <pre id="memory-result">No conversation history yet.</pre>
+            </div>
           </div>
-          <div class="action-btn-group">
-            <button id="memory-button" class="secondary-btn small-btn" type="button">Refresh Memory</button>
-            <button id="clear-memory-button" class="danger-btn small-btn" type="button">Clear Memory</button>
-          </div>
-        </div>
-        <pre id="memory-result">No conversation history yet.</pre>
-      </section>
+        </section>
+
+      </main>
 
       <!-- In-Browser Document Viewer Modal -->
       <div id="doc-modal" class="modal-overlay" style="display:none;">

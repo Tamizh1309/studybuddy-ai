@@ -239,6 +239,12 @@ function switchTab(tabId) {
     content.classList.add('active');
     content.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  if (tabId === 'tab-dashboard') {
+    loadDashboard();
+  } else if (tabId === 'tab-memory') {
+    loadMemory();
+  }
 }
 
 // Sound Synthesizer
@@ -379,6 +385,136 @@ if (closeBadgesModalBtn) {
   });
 }
 
+// --- Student Dashboard ---
+async function loadDashboard() {
+  try {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+    if (!data) return;
+
+    // Greeting
+    const greetingEl = document.getElementById('dash-greeting');
+    if (greetingEl) greetingEl.textContent = data.greeting || 'Good Evening, Tamizh 👋';
+
+    // Spotlight: Next Best Action
+    const nba = data.next_best_action;
+    if (nba) {
+      const nbaTitle = document.getElementById('nba-action-title');
+      const nbaDesc = document.getElementById('nba-action-desc');
+      const nbaSubReason = document.getElementById('nba-sub-reason');
+      const nbaBtn = document.getElementById('nba-action-btn');
+
+      if (nbaTitle) nbaTitle.textContent = nba.action || 'Revise Operating Systems – Deadlocks';
+      if (nbaDesc) nbaDesc.textContent = nba.reason || 'Your last quiz score was 55% and your exam is in 2 days.';
+      if (nbaSubReason) nbaSubReason.textContent = `Priority Focus • Based on recent 55% score`;
+      if (nbaBtn) {
+        nbaBtn.textContent = nba.button_label || 'Start Revision →';
+        nbaBtn.onclick = () => {
+          triggerMasterAgent(
+            `Tomorrow I have ${nba.subject || 'OS'} exam. Give me a revision plan and then quiz me on ${nba.topic || 'deadlocks'}.`
+          );
+        };
+      }
+    }
+
+    // Today's Study Plan Tasks
+    const tasksContainer = document.getElementById('dash-tasks-container');
+    const planRatio = document.getElementById('dash-plan-ratio');
+    if (tasksContainer && data.today_plan) {
+      const completedCount = data.today_plan.filter(t => t.completed).length;
+      if (planRatio) planRatio.textContent = `${completedCount}/${data.today_plan.length} Done`;
+
+      tasksContainer.innerHTML = data.today_plan.map(task => `
+        <div class="dash-task-item ${task.completed ? 'completed' : ''} ${task.current ? 'current' : ''}">
+          <label class="task-checkbox-label">
+            <input type="checkbox" class="dash-task-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''} />
+            <span class="task-custom-checkbox"></span>
+          </label>
+          <div class="task-content">
+            <span class="task-name">${task.current ? '➔ ' : ''}${escapeHtml(task.title)}</span>
+            <span class="task-duration">${task.duration || '45m'}</span>
+          </div>
+          ${task.completed ? '<span class="task-badge done-badge">✓ Done</span>' : task.current ? '<span class="task-badge current-badge">In Progress</span>' : '<span class="task-badge pending-badge">Pending</span>'}
+        </div>
+      `).join('');
+
+      tasksContainer.querySelectorAll('.dash-task-checkbox').forEach(cb => {
+        cb.addEventListener('change', async (e) => {
+          const taskId = e.target.dataset.id;
+          try {
+            await postJson('/api/dashboard/plan/toggle', { task_id: taskId });
+            loadDashboard();
+          } catch (err) {}
+        });
+      });
+    }
+
+    // Upcoming Exams
+    const examsContainer = document.getElementById('dash-exams-container');
+    if (examsContainer && data.upcoming_exams) {
+      examsContainer.innerHTML = data.upcoming_exams.map(ex => `
+        <div class="exam-item-card">
+          <div class="exam-info">
+            <span class="exam-subject">📚 ${escapeHtml(ex.subject)}</span>
+            <span class="exam-status-tag">${escapeHtml(ex.status)}</span>
+          </div>
+          <div class="exam-days-tag">${escapeHtml(ex.date)}</div>
+        </div>
+      `).join('');
+    }
+
+    // Weak Topics
+    const weakContainer = document.getElementById('dash-weak-container');
+    if (weakContainer && data.weak_topics) {
+      weakContainer.innerHTML = data.weak_topics.map(w => `
+        <div class="weak-topic-row">
+          <div class="weak-topic-header">
+            <span class="weak-topic-name">⚠️ ${escapeHtml(w.topic)} <small style="color:var(--text-muted);">(${escapeHtml(w.subject)})</small></span>
+            <span class="weak-topic-score">${w.score}%</span>
+          </div>
+          <div class="weak-topic-bar-bg">
+            <div class="weak-topic-bar-fill" style="width: ${w.score}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Recent Quizzes
+    const quizHistoryContainer = document.getElementById('dash-quiz-history-container');
+    if (quizHistoryContainer && data.recent_quizzes) {
+      quizHistoryContainer.innerHTML = data.recent_quizzes.map(q => `
+        <div class="recent-quiz-pill">
+          <span class="quiz-subject">🎯 ${escapeHtml(q.subject)}</span>
+          <span class="quiz-score-badge">${escapeHtml(q.score)} (${q.percent}%)</span>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    console.error('Failed to load dashboard data:', err);
+  }
+}
+
+// Dashboard Quick-Ask & Quick Goal Chips
+const dashAskForm = document.getElementById('dash-ask-form');
+const dashAskInput = document.getElementById('dash-ask-input');
+
+if (dashAskForm) {
+  dashAskForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const query = dashAskInput.value.trim();
+    if (!query) return;
+    dashAskInput.value = '';
+    triggerMasterAgent(query);
+  });
+}
+
+document.querySelectorAll('.quick-goal-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const goal = btn.dataset.goal;
+    if (goal) triggerMasterAgent(goal);
+  });
+});
+
 // --- Voice Input (Speech-to-Text) ---
 function initSpeechRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -457,8 +593,70 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// --- Tab 1: AI Tutor (Chat) ---
-function appendChatMessage(sender, text, isMarkdown = true, sources = [], retrievedChunks = [], ragMode = 'hybrid') {
+// --- Master Agent Bridge & Helpers ---
+function triggerMasterAgent(userGoal) {
+  switchTab('tab-tutor');
+  if (questionInput) questionInput.value = userGoal;
+  if (questionForm) questionForm.dispatchEvent(new Event('submit'));
+}
+
+function renderActiveQuiz(quizData) {
+  if (!quizData) return;
+  const topic = quizData.topic || 'Assessment';
+  const questions = quizData.questions || [];
+  if (!questions.length) return;
+
+  state.currentQuiz = { topic, questions };
+  state.userQuizAnswers = {};
+
+  if (quizTopicDisplay) quizTopicDisplay.textContent = `Topic: ${topic}`;
+  if (quizProgressDisplay) quizProgressDisplay.textContent = `${questions.length} Questions`;
+  renderQuizQuestions(questions);
+  if (quizLoading) quizLoading.style.display = 'none';
+  if (quizRunner) quizRunner.style.display = 'block';
+  if (quizResultsCard) quizResultsCard.style.display = 'none';
+  if (exportQuizBtn) exportQuizBtn.style.display = 'inline-block';
+}
+
+function renderStudyPlan(planData) {
+  if (!planData) return;
+  const topic = planData.topic || 'Revision Schedule';
+  const planItems = planData.plan || [];
+  const days = planData.days || planItems.length || 3;
+  state.currentPlan = { topic, days, items: planItems };
+  if (planStatusMsg) planStatusMsg.style.display = 'none';
+
+  let html = '';
+  planItems.forEach((item, idx) => {
+    html += `
+      <div class="plan-card">
+        <div class="plan-day-badge">Day ${idx + 1}</div>
+        <div class="plan-details">
+          <label class="plan-checkbox-label">
+            <input type="checkbox" class="plan-check" data-day="${idx + 1}" />
+            <span class="plan-text">${escapeHtml(item)}</span>
+          </label>
+        </div>
+      </div>
+    `;
+  });
+  if (planContainer) planContainer.innerHTML = html;
+  if (exportPlanBtn) exportPlanBtn.style.display = 'inline-block';
+
+  document.querySelectorAll('.plan-check').forEach((chk) => {
+    chk.addEventListener('change', async () => {
+      if (chk.checked) {
+        playNotificationChime('success');
+        const curr = Number(statTopics.textContent || 0);
+        await postJson('/api/progress', { completed_topics: curr + 1 });
+        loadProgress();
+      }
+    });
+  });
+}
+
+// --- Tab 1: AI Tutor (Chat with Master Agent Trace) ---
+function appendChatMessage(sender, text, isMarkdown = true, sources = [], retrievedChunks = [], ragMode = 'hybrid', agentTrace = null, actionButtons = null) {
   const isBot = sender === 'bot';
   const messageDiv = document.createElement('div');
   messageDiv.className = `chat-message ${isBot ? 'bot-message' : 'user-message'}`;
@@ -473,6 +671,27 @@ function appendChatMessage(sender, text, isMarkdown = true, sources = [], retrie
   const header = document.createElement('div');
   header.className = 'msg-header';
   header.innerHTML = `<strong>${isBot ? 'StudyBuddy AI' : 'You'}</strong> <span class="msg-time">Just now</span>`;
+
+  // Render Transparent Master Agent Execution Trace Card
+  if (isBot && agentTrace && agentTrace.actions && agentTrace.actions.length > 0) {
+    const traceBox = document.createElement('div');
+    traceBox.className = 'agent-trace-card';
+    traceBox.innerHTML = `
+      <div class="agent-trace-header">
+        <span class="agent-trace-title">🤖 AI Agent Activity & Execution Plan</span>
+        <span class="agent-trace-badge">Master Agent • ${escapeHtml(agentTrace.intent || 'Active')}</span>
+      </div>
+      <div class="agent-trace-steps">
+        ${agentTrace.actions.map(act => `
+          <div class="agent-step-item">
+            <span class="step-check">✓</span>
+            <span class="step-text">${escapeHtml(act.label || act.action)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    body.appendChild(traceBox);
+  }
 
   const content = document.createElement('div');
   content.className = 'msg-content';
@@ -538,6 +757,25 @@ function appendChatMessage(sender, text, isMarkdown = true, sources = [], retrie
     body.appendChild(citationBox);
   }
 
+  // Render Quick Interactive Action Buttons (e.g. Launch Quiz, Open Study Plan)
+  if (isBot && actionButtons && actionButtons.length > 0) {
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '0.6rem';
+    btnRow.style.marginTop = '0.85rem';
+    btnRow.style.flexWrap = 'wrap';
+
+    actionButtons.forEach(btnConfig => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = btnConfig.className || 'action-btn small-btn';
+      b.textContent = btnConfig.label;
+      b.addEventListener('click', btnConfig.onClick);
+      btnRow.appendChild(b);
+    });
+    body.appendChild(btnRow);
+  }
+
   if (isBot) {
     const actions = document.createElement('div');
     actions.className = 'msg-actions';
@@ -595,7 +833,7 @@ if (questionForm) {
     typingIndicator.className = 'chat-message bot-message typing-indicator';
     typingIndicator.innerHTML = `
       <div class="msg-avatar">✦</div>
-      <div class="msg-body"><div class="msg-content"><em>Scanning vector index & retrieving course context...</em></div></div>
+      <div class="msg-body"><div class="msg-content"><em>Master Agent: Detecting intent & orchestrating RAG, Memory, and Tools...</em></div></div>
     `;
     chatViewport.appendChild(typingIndicator);
     chatViewport.scrollTop = chatViewport.scrollHeight;
@@ -603,27 +841,60 @@ if (questionForm) {
     sendBtn.disabled = true;
 
     try {
-      const data = await postJson('/api/answer', {
-        question,
-        subject,
-        mode,
+      // Call Master Agent endpoint
+      const data = await postJson('/api/agent/chat', {
+        query: question,
+        subject: subject,
+        mode: mode,
         engine: state.selectedEngine,
         rag_mode: state.selectedRagMode,
       });
 
       typingIndicator.remove();
+
+      const agentTrace = (data.actions_taken && data.actions_taken.length > 0)
+        ? { intent: data.intent, actions: data.actions_taken }
+        : null;
+
+      const actionButtons = [];
+      if (data.quiz && data.quiz.questions && data.quiz.questions.length > 0) {
+        actionButtons.push({
+          label: `🚀 Launch ${data.quiz.topic || 'Deadlocks'} Quiz in Quiz Center`,
+          className: 'action-btn small-btn glow-btn',
+          onClick: () => {
+            switchTab('tab-quiz');
+            renderActiveQuiz(data.quiz);
+          }
+        });
+      }
+      if (data.study_plan) {
+        actionButtons.push({
+          label: '📅 View Plan in Study Planner',
+          className: 'secondary-btn small-btn',
+          onClick: () => {
+            switchTab('tab-planner');
+            renderStudyPlan(data.study_plan);
+          }
+        });
+      }
+
       appendChatMessage(
         'bot',
-        data.answer,
+        data.response || data.answer || 'Response generated.',
         true,
         data.sources || [],
         data.retrieved_chunks || [],
-        data.rag_mode || state.selectedRagMode
+        data.rag_mode || state.selectedRagMode,
+        agentTrace,
+        actionButtons
       );
+
       loadMemory();
+      loadDashboard();
+      loadProgress();
     } catch (error) {
       typingIndicator.remove();
-      appendChatMessage('bot', `⚠️ **Error**: ${error.message}\nPlease check your network or try changing the AI engine dropdown.`);
+      appendChatMessage('bot', `⚠️ **Error**: ${error.message}\nPlease check your connection or switch the AI engine.`);
     } finally {
       sendBtn.disabled = false;
       questionInput.focus();
@@ -1503,10 +1774,14 @@ async function loadMaterials() {
         ? list
             .map(
               (name) => `
-          <li>
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-              <span><span class="file-icon">📄</span> <span class="file-name">${escapeHtml(name)}</span></span>
-              <button type="button" class="icon-link-btn view-doc-btn" data-doc="${escapeHtml(name)}">👁 View</button>
+          <li class="material-list-item" style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap: 0.5rem; flex-wrap: wrap;">
+              <span><span class="file-icon">📄</span> <strong class="file-name">${escapeHtml(name)}</strong></span>
+              <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <span class="badge-status-tag badge-unlocked-tag" style="font-size:0.75rem; padding: 0.2rem 0.5rem;">Ready ✓</span>
+                <button type="button" class="icon-link-btn view-doc-btn" data-doc="${escapeHtml(name)}">👁 View</button>
+                <button type="button" class="icon-link-btn delete-doc-btn" data-doc="${escapeHtml(name)}" style="color:var(--danger, #ef4444);">🗑 Delete</button>
+              </div>
             </div>
           </li>
         `,
@@ -1519,6 +1794,23 @@ async function loadMaterials() {
         btn.addEventListener('click', async () => {
           const docName = btn.dataset.doc;
           openDocumentModal(docName);
+        });
+      });
+
+      // Attach click listeners to delete doc buttons
+      document.querySelectorAll('.delete-doc-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const docName = btn.dataset.doc;
+          if (!window.confirm(`Are you sure you want to delete "${docName}" from course materials and update RAG index?`)) return;
+          try {
+            const res = await fetch(`/api/materials/${encodeURIComponent(docName)}`, { method: 'DELETE' });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.error || 'Failed to delete');
+            await loadMaterials();
+            await loadDashboard();
+          } catch (err) {
+            alert(`Could not delete document: ${err.message}`);
+          }
         });
       });
     }
@@ -1599,18 +1891,32 @@ if (uploadForm) {
 
     uploadResult.style.display = 'block';
     uploadResult.className = 'status-msg info-msg';
-    uploadResult.textContent = `Ingesting and indexing "${file.name}" into RAG memory...`;
+
+    // Animated upload phases
+    uploadResult.textContent = `⏳ 1/4 Uploading "${file.name}" to server...`;
+    const t1 = setTimeout(() => {
+      uploadResult.textContent = `⚙️ 2/4 Processing text extraction & cleaning...`;
+    }, 450);
+    const t2 = setTimeout(() => {
+      uploadResult.textContent = `✂️ 3/4 Chunking text into semantically aware passages...`;
+    }, 950);
+    const t3 = setTimeout(() => {
+      uploadResult.textContent = `🧠 4/4 Computing dense embeddings & updating FAISS vector index...`;
+    }, 1450);
 
     try {
       const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Upload failed');
 
       uploadResult.className = 'status-msg success-msg';
-      uploadResult.textContent = `✓ Ingested "${data.filename || file.name}" successfully into RAG index.`;
+      uploadResult.textContent = `✓ Ready! "${data.filename || file.name}" ingested into RAG vector index.`;
       materialFileInput.value = '';
       await loadMaterials();
+      await loadDashboard();
     } catch (err) {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       uploadResult.className = 'status-msg error-msg';
       uploadResult.textContent = `Error: ${err.message}`;
     }
@@ -1697,31 +2003,49 @@ if (exportSummaryBtn) {
   });
 }
 
-// --- Memory Drawer ---
+// --- Learning Memory Tab ---
 async function loadMemory() {
   try {
     const response = await fetch('/api/memory');
     const data = await response.json();
+
+    const memProfile = data.profile || {};
+    const nameEl = document.getElementById('mem-val-name');
+    if (nameEl && memProfile.name) nameEl.textContent = memProfile.name;
+
+    const styleEl = document.getElementById('mem-style-display');
+    if (styleEl && memProfile.preferred_style) {
+      styleEl.textContent = `"${memProfile.preferred_style}"`;
+    }
+
     if (memoryResult) {
-      memoryResult.textContent = data.summary || 'No conversation history recorded yet.';
+      if (data.recent_turns && data.recent_turns.length > 0) {
+        memoryResult.textContent = data.recent_turns.map((t, idx) =>
+          `[Session Turn ${idx + 1}]\nStudent: ${t.user}\nStudyBuddy: ${t.assistant}\n`
+        ).join('\n---\n');
+      } else {
+        memoryResult.textContent = data.summary || 'No conversation history recorded yet. Start interacting with the AI Tutor to build persistent context!';
+      }
     }
   } catch (e) {}
 }
 
 if (memoryButton) memoryButton.addEventListener('click', loadMemory);
 
-if (clearMemoryButton) {
-  clearMemoryButton.addEventListener('click', async () => {
-    if (!window.confirm('Clear all conversation history from agent memory?')) return;
-    try {
-      const response = await fetch('/api/memory', { method: 'DELETE' });
-      const data = await response.json();
-      if (memoryResult) memoryResult.textContent = data.message || 'Memory cleared.';
-    } catch (err) {
-      alert(`Could not clear memory: ${err.message}`);
-    }
-  });
+async function handleClearMemory() {
+  if (!window.confirm('Clear all conversation history from agent memory?')) return;
+  try {
+    const response = await fetch('/api/memory', { method: 'DELETE' });
+    const data = await response.json();
+    if (memoryResult) memoryResult.textContent = data.message || 'Memory cleared.';
+    await loadMemory();
+    await loadDashboard();
+  } catch (err) {
+    alert(`Could not clear memory: ${err.message}`);
+  }
 }
+
+if (clearMemoryButton) clearMemoryButton.addEventListener('click', handleClearMemory);
 
 // --- Theme Toggling ---
 if (themeButton) {
@@ -1748,6 +2072,7 @@ window.addEventListener('click', (e) => {
 });
 
 // --- Initialization ---
+loadDashboard();
 loadAiStatus();
 loadProgress();
 loadMaterials();

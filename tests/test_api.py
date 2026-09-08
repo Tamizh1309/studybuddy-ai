@@ -195,3 +195,57 @@ def test_api_progress_streaks_badges(client):
     assert "Focus Titan" in updated["badges"]
     assert "Quiz Ace" in updated["badges"]
 
+
+def test_api_dashboard(client):
+    res = client.get("/api/dashboard")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "greeting" in data
+    assert "next_best_action" in data
+    assert "today_plan" in data
+    assert "weak_topics" in data
+    assert "upcoming_exams" in data
+    assert data["student"] == "Tamizh"
+    assert "Deadlocks" in data["next_best_action"]["action"]
+
+
+def test_api_dashboard_plan_toggle(client):
+    res = client.post("/api/dashboard/plan/toggle", json={"task_id": "task-3"})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["status"] == "success"
+    assert "today_plan" in data
+
+
+def test_api_recommendations(client):
+    res = client.get("/api/recommendations")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "action" in data
+    assert "reason" in data
+
+
+def test_api_master_agent_multistep_flow(client):
+    query = "Tomorrow I have OS exam. Give me a revision plan and then quiz me on deadlocks."
+    res = client.post("/api/agent/chat", json={"query": query})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["intent"] == "MULTI_PLAN_AND_QUIZ"
+    assert "actions_taken" in data
+    assert len(data["actions_taken"]) >= 4
+    assert "response" in data
+    assert "deadlock" in data["response"].lower() or "banker" in data["response"].lower()
+    assert data["quiz"] is not None
+    assert len(data["quiz"]["questions"]) >= 3
+    assert data["study_plan"] is not None
+
+
+def test_api_memory_profile(client):
+    res = client.get("/api/memory")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "profile" in data
+    assert data["profile"]["name"] == "Tamizh"
+    assert "weak_topics" in data
+
+
