@@ -34,7 +34,13 @@ def index() -> str:
 
 @app.route("/api/health")
 def health() -> tuple[dict, int]:
-    return jsonify({"status": "ok", "app": "StudyBuddy AI"}), 200
+    return jsonify(
+        {
+            "status": "ok",
+            "app": "StudyBuddy AI",
+            "features": ["universal_qa", "rag", "study_plans", "quizzes", "progress", "uploads"],
+        }
+    ), 200
 
 
 @app.route("/api/answer", methods=["POST"])
@@ -53,7 +59,10 @@ def answer() -> tuple[dict, int]:
 def learning_plan() -> tuple[dict, int]:
     payload = request.get_json(silent=True) or {}
     topic = (payload.get("topic") or "").strip() or "artificial intelligence"
-    days = int(payload.get("days", 5) or 5)
+    try:
+        days = int(payload.get("days", 5) or 5)
+    except (TypeError, ValueError):
+        return jsonify({"error": "days must be a number."}), 400
 
     return jsonify({"plan": assistant.create_learning_plan(topic, days=max(1, days))}), 200
 
@@ -62,7 +71,10 @@ def learning_plan() -> tuple[dict, int]:
 def quiz() -> tuple[dict, int]:
     payload = request.get_json(silent=True) or {}
     topic = (payload.get("topic") or "").strip() or "artificial intelligence"
-    count = int(payload.get("count", 3) or 3)
+    try:
+        count = int(payload.get("count", 3) or 3)
+    except (TypeError, ValueError):
+        return jsonify({"error": "count must be a number."}), 400
 
     return jsonify({"quiz": assistant.generate_quiz(topic, count=max(1, count))}), 200
 
@@ -105,14 +117,26 @@ def upload_material() -> tuple[dict, int]:
     return jsonify({"message": f"{destination.name} uploaded successfully."}), 201
 
 
+@app.route("/api/materials")
+def materials() -> tuple[dict, int]:
+    sources = assistant.knowledge.materials()
+    return jsonify({"count": len(sources), "materials": sources}), 200
+
+
 @app.route("/api/progress", methods=["GET", "POST"])
 def progress() -> tuple[dict, int]:
     if request.method == "POST":
         payload = request.get_json(silent=True) or {}
+        try:
+            completed_topics = int(payload.get("completed_topics", 0) or 0)
+            study_hours = float(payload.get("study_hours", 0) or 0)
+            quizzes_completed = int(payload.get("quizzes_completed", 0) or 0)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Progress values must be numbers."}), 400
         current = {
-            "completed_topics": max(0, int(payload.get("completed_topics", 0) or 0)),
-            "study_hours": max(0, float(payload.get("study_hours", 0) or 0)),
-            "quizzes_completed": max(0, int(payload.get("quizzes_completed", 0) or 0)),
+            "completed_topics": max(0, completed_topics),
+            "study_hours": max(0, study_hours),
+            "quizzes_completed": max(0, quizzes_completed),
         }
         PROGRESS_PATH.write_text(json.dumps(current, indent=2), encoding="utf-8")
         return jsonify(current), 200

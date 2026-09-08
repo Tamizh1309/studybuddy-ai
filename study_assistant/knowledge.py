@@ -86,5 +86,9 @@ class KnowledgeBase:
             return "No course material matched this question."
         return "\n\n".join(f"[{chunk.source}] {chunk.text}" for chunk in matches)
 
+    def materials(self) -> List[str]:
+        """Return the indexed source filenames without duplicate chunk entries."""
+        return sorted({chunk.source for chunk in self.chunks})
+
 
 __all__ = ["KnowledgeBase", "CourseChunk"]

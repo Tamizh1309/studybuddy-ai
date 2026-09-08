@@ -124,6 +124,7 @@ python main.py --quiz --topic "artificial intelligence" --count 3
 - `POST /api/quiz` with JSON: `{ "topic": "artificial intelligence", "count": 3 }`
 - `GET /api/memory`
 - `GET /api/health`
+- `GET /api/materials`
 - `GET /api/ollama-status`
 - `POST /api/upload` with a multipart `.txt` or `.md` file
 - `GET/POST /api/progress`

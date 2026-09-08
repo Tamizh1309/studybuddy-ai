@@ -170,6 +170,7 @@ button:hover {
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
 }
+.compact-list { margin-top:10px; font-size:.82rem; }
 
 .quiz-item {
   margin-bottom: 16px;

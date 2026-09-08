@@ -14,6 +14,7 @@ const uploadResult = document.getElementById('upload-result');
 const progressResult = document.getElementById('progress-result');
 const ollamaStatus = document.getElementById('ollama-status');
 const navStatus = document.getElementById('nav-status');
+const materialsResult = document.getElementById('materials-result');
 
 async function postJson(url, payload) {
   const response = await fetch(url, {
@@ -60,6 +61,14 @@ async function loadOllamaStatus() {
   } else {
     ollamaStatus.textContent = `AI providers offline - using local RAG fallback`;
     navStatus.textContent = 'RAG fallback';
+  }
+
+  async function loadMaterials() {
+    const response = await fetch('/api/materials');
+    const data = await response.json();
+    materialsResult.innerHTML = data.materials.length
+      ? data.materials.map((name) => `<li>📄 ${name}</li>`).join('')
+      : '<li>No course files indexed yet.</li>';
   }
 }
 
@@ -144,6 +153,7 @@ uploadForm.addEventListener('submit', async (event) => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Upload failed');
     uploadResult.textContent = data.message;
+    await loadMaterials();
   } catch (error) {
     uploadResult.textContent = `Error: ${error.message}`;
   }
@@ -179,3 +189,4 @@ document.querySelectorAll('.chip').forEach((chip) => {
 loadMemory();
 loadProgress();
 loadOllamaStatus();
+loadMaterials();
