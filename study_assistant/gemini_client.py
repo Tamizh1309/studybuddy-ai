@@ -13,7 +13,7 @@ class GeminiClient:
         self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        self.timeout = float(os.getenv("GEMINI_TIMEOUT", "15"))
+        self.timeout = float(os.getenv("GEMINI_TIMEOUT", "35"))
 
     def is_available(self) -> bool:
         return bool(self.api_key)
@@ -34,25 +34,32 @@ class GeminiClient:
         payload = json.dumps(
             {"contents": [{"parts": [{"text": instructions}]}]}
         ).encode("utf-8")
-        request = Request(
-            f"{self.base_url}/{self.model}:generateContent?key={self.api_key}",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urlopen(request, timeout=self.timeout) as response:
-                result = json.loads(response.read().decode("utf-8"))
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Gemini is unavailable: {exc}") from exc
 
-        try:
-            answer = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-        except (KeyError, IndexError, TypeError, AttributeError) as exc:
-            raise RuntimeError("Gemini returned an empty or invalid response.") from exc
-        if not answer:
-            raise RuntimeError("Gemini returned an empty response.")
-        return answer
+        models_to_try = [self.model]
+        for fallback in ("gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"):
+            if fallback not in models_to_try:
+                models_to_try.append(fallback)
+
+        last_error = None
+        for model_name in models_to_try:
+            for attempt in range(2):
+                request = Request(
+                    f"{self.base_url}/{model_name}:generateContent?key={self.api_key}",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                try:
+                    with urlopen(request, timeout=self.timeout) as response:
+                        result = json.loads(response.read().decode("utf-8"))
+                        answer = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        if answer:
+                            return answer
+                except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, IndexError) as exc:
+                    last_error = exc
+                    continue
+
+        raise RuntimeError(f"Gemini is unavailable: {last_error}")
 
 
 __all__ = ["GeminiClient"]
