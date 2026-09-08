@@ -3,12 +3,12 @@
 from .assistant import StudyAssistant
 from .tools import answer_question_from_materials, build_learning_plan, create_quiz
 from .ollama_client import OllamaClient
-from .gemini_client import GeminiClient
+from .groq_client import GroqClient
 
 __all__ = [
     "StudyAssistant",
     "OllamaClient",
-    "GeminiClient",
+    "GroqClient",
     "answer_question_from_materials",
     "build_learning_plan",
     "create_quiz",

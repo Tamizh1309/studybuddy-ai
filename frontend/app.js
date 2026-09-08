@@ -54,9 +54,9 @@ async function loadProgress() {
 async function loadOllamaStatus() {
   const response = await fetch('/api/ollama-status');
   const data = await response.json();
-  if (data.gemini_available) {
-    ollamaStatus.textContent = `Gemini connected - model: ${data.gemini_model}`;
-    navStatus.textContent = 'Gemini online';
+  if (data.groq_available) {
+    ollamaStatus.textContent = `Groq connected - model: ${data.groq_model}`;
+    navStatus.textContent = 'Groq online';
   } else if (data.available) {
     ollamaStatus.textContent = `Ollama connected - model: ${data.model}`;
     navStatus.textContent = 'Ollama online';

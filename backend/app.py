@@ -111,8 +111,8 @@ def ollama_status() -> tuple[dict, int]:
         {
             "available": assistant.ollama.is_available(),
             "model": assistant.ollama.model,
-            "gemini_available": assistant.gemini.is_available(),
-            "gemini_model": assistant.gemini.model,
+            "groq_available": assistant.groq.is_available(),
+            "groq_model": assistant.groq.model,
         }
     ), 200
 

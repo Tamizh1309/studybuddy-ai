@@ -19,7 +19,7 @@ A lightweight AI-powered learning assistant that combines:
 - Retain conversation history in memory for follow-up interactions
 - Access the system through both CLI and browser UI
 - Optional local Ollama chat using the `nemotron-3-nano:30b` model
-- Optional Gemini API chat using the `gemini-2.5-flash` model
+- Optional Groq Cloud chat using the `llama-3.3-70b-versatile` model
 - General-purpose Q&A for academic, technical, planning, and everyday questions
 - Subject selector and response modes: explain, step-by-step, summary, examples, exam answer
 - Upload `.txt`, `.md`, `.pdf`, `.docx`, and `.pptx` course notes from the browser (10 MB max)
@@ -65,7 +65,7 @@ The repository includes `render.yaml` for one-click Render deployment:
 1. Open [Render](https://render.com) and sign in with GitHub.
 2. Select **New +** → **Blueprint**.
 3. Choose `Tamizh1309/studybuddy-ai`.
-4. Add `GEMINI_API_KEY` in the Render environment settings if Gemini is enabled.
+4. Add `GROQ_API_KEY` in the Render environment settings to enable Groq Cloud.
 5. Deploy. Render provides a public HTTPS URL such as:
    `https://studybuddy-ai.onrender.com`
 
@@ -97,18 +97,18 @@ $env:OLLAMA_API_KEY = "your-key"
 
 If Ollama is offline, StudyBuddy AI automatically uses the built-in local RAG response.
 
-## Gemini setup
+## Groq Cloud setup
 
-Create a Gemini API key in Google AI Studio and set it as an environment variable.
+Create a Groq API key in the Groq Console and set it as an environment variable.
 Never commit the key to source code:
 
 ```powershell
-$env:GEMINI_API_KEY = "your-gemini-api-key"
-$env:GEMINI_MODEL = "gemini-2.5-flash"
+$env:GROQ_API_KEY = "your-groq-api-key"
+$env:GROQ_MODEL = "llama-3.3-70b-versatile"
 python backend/app.py
 ```
 
-Provider priority is Gemini, then local Ollama, then the built-in RAG fallback.
+Provider priority is Groq Cloud, then local Ollama, then the built-in RAG fallback.
 
 ## CLI usage
 

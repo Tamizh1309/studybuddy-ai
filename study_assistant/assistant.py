@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from .knowledge import KnowledgeBase
 from .memory import ConversationMemory
-from .gemini_client import GeminiClient
+from .groq_client import GroqClient
 from .ollama_client import OllamaClient
 
 
@@ -19,13 +19,13 @@ class StudyAssistant:
     knowledge: KnowledgeBase = field(init=False)
     memory: ConversationMemory = field(init=False)
     ollama: OllamaClient = field(init=False)
-    gemini: GeminiClient = field(init=False)
+    groq: GroqClient = field(init=False)
 
     def __post_init__(self) -> None:
         self.knowledge = KnowledgeBase(self.materials_dir)
         self.memory = ConversationMemory(self.memory_path)
         self.ollama = OllamaClient()
-        self.gemini = GeminiClient()
+        self.groq = GroqClient()
 
     def answer_question(
         self,
@@ -35,7 +35,7 @@ class StudyAssistant:
     ) -> str:
         context = self.knowledge.get_context(question, limit=3)
         try:
-            answer = self.gemini.chat(question, context, subject, mode)
+            answer = self.groq.chat(question, context, subject, mode)
         except RuntimeError:
             try:
                 answer = self.ollama.chat(question, context, subject, mode)
@@ -47,8 +47,8 @@ class StudyAssistant:
     def _fallback_answer(self, question: str, context: str) -> str:
         if "No course material matched" in context:
             return (
-                "I could not answer this general question because Gemini and Ollama are offline "
-                "and it is not covered by the uploaded course materials. Configure GEMINI_API_KEY "
+                "I could not answer this general question because Groq and Ollama are offline "
+                "and it is not covered by the uploaded course materials. Configure GROQ_API_KEY "
                 f"or start Ollama with `ollama run {self.ollama.model}`, then try again."
             )
         return self._build_answer_from_context(question, context)
