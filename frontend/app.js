@@ -1,5 +1,5 @@
-// StudyBuddy AI — Frontend Application Logic
-// Features: Multi-Engine AI, Interactive Chat, Graded Quizzes, 3D Flashcards, Pomodoro, Library & Summarizer
+// StudyBuddy AI — Frontend Application Logic (Next-Gen Agentic Architecture)
+// Features: Multi-Engine AI, Agent Architect, Concept Mind Map, Code Explainer, Voice Input, 3D Flashcards, Graded Quizzes, Pomodoro, Document Viewer, Streaks & Badges
 
 // --- State Management ---
 const state = {
@@ -12,6 +12,8 @@ const state = {
   cardMastery: {}, // index -> 'mastered' | 'review'
   currentPlan: null,
   currentSummary: null,
+  architectData: null,
+  activeDoc: null,
   pomodoro: {
     timerId: null,
     totalSeconds: 25 * 60,
@@ -20,6 +22,10 @@ const state = {
     mode: 'focus', // 'focus' | 'short-break' | 'long-break'
     focusDurationMinutes: 25,
     completedSessions: Number(localStorage.getItem('studybuddy-pomodoro-count') || 0),
+  },
+  voice: {
+    recognition: null,
+    isRecording: false,
   },
 };
 
@@ -30,10 +36,13 @@ const ollamaStatus = document.getElementById('ollama-status');
 const themeButton = document.getElementById('theme-button');
 
 // Stats Bar
+const statStreak = document.getElementById('stat-streak');
 const statTopics = document.getElementById('stat-topics');
 const statHours = document.getElementById('stat-hours');
 const statQuizzes = document.getElementById('stat-quizzes');
 const statFocusSessions = document.getElementById('stat-focus-sessions');
+const statBadgesCount = document.getElementById('stat-badges-count');
+const viewBadgesCard = document.getElementById('view-badges-card');
 
 // Tabs
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -47,6 +56,36 @@ const subjectInput = document.getElementById('subject-input');
 const modeInput = document.getElementById('mode-input');
 const sendBtn = document.getElementById('send-btn');
 const clearChatBtn = document.getElementById('clear-chat-btn');
+const voiceMicBtn = document.getElementById('voice-mic-btn');
+const voiceStatusIndicator = document.getElementById('voice-status-indicator');
+const voiceStatusText = document.getElementById('voice-status-text');
+
+// Agent Architect
+const architectForm = document.getElementById('architect-form');
+const architectGoalInput = document.getElementById('architect-goal');
+const architectDaysInput = document.getElementById('architect-days');
+const architectStatus = document.getElementById('architect-status');
+const architectTraceBox = document.getElementById('architect-trace-box');
+const architectStepsList = document.getElementById('architect-steps-list');
+const architectResultsBox = document.getElementById('architect-results-box');
+const archCurriculumList = document.getElementById('arch-curriculum-list');
+const archQuizList = document.getElementById('arch-quiz-list');
+const archCardsList = document.getElementById('arch-cards-list');
+const archQuizCount = document.getElementById('arch-quiz-count');
+const archCardsCount = document.getElementById('arch-cards-count');
+const sendToQuizTabBtn = document.getElementById('send-to-quiz-tab-btn');
+const sendToCardsTabBtn = document.getElementById('send-to-cards-tab-btn');
+
+// Concept Mind Map
+const conceptmapForm = document.getElementById('conceptmap-form');
+const conceptmapTopic = document.getElementById('conceptmap-topic');
+const conceptmapStatus = document.getElementById('conceptmap-status');
+const conceptmapCanvas = document.getElementById('conceptmap-canvas');
+const conceptRoot = document.getElementById('concept-root');
+const conceptBranches = document.getElementById('concept-branches');
+const copyMermaidBtn = document.getElementById('copy-mermaid-btn');
+const conceptmapMermaidBox = document.getElementById('conceptmap-mermaid-box');
+const conceptmapMermaidCode = document.getElementById('conceptmap-mermaid-code');
 
 // Study Planner
 const planForm = document.getElementById('plan-form');
@@ -86,6 +125,19 @@ const exportCardsBtn = document.getElementById('export-cards-btn');
 const markReviewBtn = document.getElementById('mark-review-btn');
 const markMasteredBtn = document.getElementById('mark-mastered-btn');
 
+// Code Explainer
+const codeForm = document.getElementById('code-form');
+const codeLangSelect = document.getElementById('code-lang-select');
+const codeModeSelect = document.getElementById('code-mode-select');
+const codeInput = document.getElementById('code-input');
+const codeLoading = document.getElementById('code-loading');
+const codeResults = document.getElementById('code-results');
+const metricTimeComp = document.getElementById('metric-time-comp');
+const metricSpaceComp = document.getElementById('metric-space-comp');
+const codeSummaryText = document.getElementById('code-summary-text');
+const codeLinesTable = document.getElementById('code-lines-table');
+const codeSuggestionsList = document.getElementById('code-suggestions-list');
+
 // Pomodoro Timer
 const timerModeBtns = document.querySelectorAll('.timer-mode-btn');
 const timerDigits = document.getElementById('timer-digits');
@@ -113,6 +165,19 @@ const memoryButton = document.getElementById('memory-button');
 const clearMemoryButton = document.getElementById('clear-memory-button');
 const memoryResult = document.getElementById('memory-result');
 
+// Modals
+const docModal = document.getElementById('doc-modal');
+const docModalTitle = document.getElementById('doc-modal-title');
+const docModalContent = document.getElementById('doc-modal-content');
+const closeDocModalBtn = document.getElementById('close-doc-modal-btn');
+const docQuickSummarize = document.getElementById('doc-quick-summarize');
+const docQuickCards = document.getElementById('doc-quick-cards');
+const docQuickQuiz = document.getElementById('doc-quick-quiz');
+
+const badgesModal = document.getElementById('badges-modal');
+const closeBadgesModalBtn = document.getElementById('close-badges-modal-btn');
+const badgesGrid = document.getElementById('badges-grid');
+
 // --- Helper Utilities ---
 async function postJson(url, payload) {
   const response = await fetch(url, {
@@ -136,22 +201,15 @@ function escapeHtml(text) {
 function formatMarkdown(text) {
   if (!text) return '';
   let parsed = escapeHtml(text);
-  // Code blocks: ```lang ... ```
   parsed = parsed.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  // Inline code: `code`
   parsed = parsed.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bold: **text**
   parsed = parsed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic: *text*
   parsed = parsed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // Headings: ### Topic
   parsed = parsed.replace(/^### (.*$)/gim, '<h4>$1</h4>');
   parsed = parsed.replace(/^## (.*$)/gim, '<h3>$1</h3>');
   parsed = parsed.replace(/^# (.*$)/gim, '<h2>$1</h2>');
-  // Bullet lists
   parsed = parsed.replace(/^\s*[-*]\s+(.*$)/gim, '<li>$1</li>');
   parsed = parsed.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-  // Line breaks to <br /> if not wrapped in tags
   parsed = parsed.replace(/\n\n/g, '<br/><br/>');
   return parsed;
 }
@@ -168,7 +226,20 @@ function downloadFile(filename, content, mimeType = 'text/markdown') {
   URL.revokeObjectURL(url);
 }
 
-// --- Sound Synthesizer for Timers and Actions ---
+function switchTab(tabId) {
+  tabButtons.forEach((b) => b.classList.remove('active'));
+  tabContents.forEach((c) => c.classList.remove('active'));
+
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  const content = document.getElementById(tabId);
+  if (btn) btn.classList.add('active');
+  if (content) {
+    content.classList.add('active');
+    content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Sound Synthesizer
 function playNotificationChime(type = 'success') {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -193,9 +264,7 @@ function playNotificationChime(type = 'success') {
       osc.start();
       osc.stop(audioCtx.currentTime + 0.35);
     }
-  } catch (e) {
-    // AudioContext blocked or not supported
-  }
+  } catch (e) {}
 }
 
 // --- Engine Selection & Status ---
@@ -241,30 +310,132 @@ function updateEngineDisplay() {
 // --- Tabs Management ---
 tabButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
-    tabButtons.forEach((b) => b.classList.remove('active'));
-    tabContents.forEach((c) => c.classList.remove('active'));
-
-    btn.classList.add('active');
-    const tabId = btn.dataset.tab;
-    const targetContent = document.getElementById(tabId);
-    if (targetContent) {
-      targetContent.classList.add('active');
-    }
+    switchTab(btn.dataset.tab);
   });
 });
 
-// --- Progress & Momentum Bar ---
+// --- Progress, Streaks & Badges ---
+const ALL_BADGES = [
+  { id: 'First Steps', name: 'First Steps', icon: '🎓', desc: 'Started your AI learning journey' },
+  { id: 'Curriculum Explorer', name: 'Curriculum Explorer', icon: '🗺️', desc: 'Completed your first study topic' },
+  { id: 'Focus Titan', name: 'Focus Titan', icon: '⏱️', desc: 'Completed a 25-minute Pomodoro focus round' },
+  { id: 'Quiz Ace', name: 'Quiz Ace', icon: '🎯', desc: 'Completed and graded an interactive practice quiz' },
+  { id: 'Agent Architect', name: 'Agent Architect', icon: '🤖', desc: 'Generated an autonomous multi-step study plan' },
+  { id: 'Recall Master', name: 'Recall Master', icon: '🗂️', desc: 'Mastered concepts using 3D Active Recall flashcards' },
+];
+
 async function loadProgress() {
   try {
     const response = await fetch('/api/progress');
     const data = await response.json();
+    if (statStreak) statStreak.textContent = data.streak_days || 1;
     if (statTopics) statTopics.textContent = data.completed_topics || 0;
     if (statHours) statHours.textContent = Number(data.study_hours || 0).toFixed(1);
     if (statQuizzes) statQuizzes.textContent = data.quizzes_completed || 0;
     if (statFocusSessions) statFocusSessions.textContent = state.pomodoro.completedSessions;
-  } catch (e) {
-    // fallback
+
+    const userBadges = data.badges || ['First Steps'];
+    if (statBadgesCount) statBadgesCount.textContent = userBadges.length;
+
+    renderBadgesModal(userBadges);
+  } catch (e) {}
+}
+
+function renderBadgesModal(unlockedBadges = []) {
+  if (!badgesGrid) return;
+  badgesGrid.innerHTML = ALL_BADGES.map((b) => {
+    const isUnlocked = unlockedBadges.includes(b.id);
+    return `
+      <div class="badge-item-card ${isUnlocked ? 'unlocked' : 'locked'}">
+        <div class="badge-icon">${b.icon}</div>
+        <div class="badge-title">${b.name}</div>
+        <div class="badge-desc">${b.desc}</div>
+        <span class="badge-status-tag ${isUnlocked ? 'badge-unlocked-tag' : 'badge-locked-tag'}">
+          ${isUnlocked ? '✓ Unlocked' : '🔒 In Progress'}
+        </span>
+      </div>
+    `;
+  }).join('');
+}
+
+if (viewBadgesCard) {
+  viewBadgesCard.addEventListener('click', () => {
+    if (badgesModal) badgesModal.style.display = 'flex';
+  });
+}
+if (closeBadgesModalBtn) {
+  closeBadgesModalBtn.addEventListener('click', () => {
+    if (badgesModal) badgesModal.style.display = 'none';
+  });
+}
+
+// --- Voice Input (Speech-to-Text) ---
+function initSpeechRecognition() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    if (voiceMicBtn) {
+      voiceMicBtn.title = 'Speech-to-text is not supported in this browser';
+      voiceMicBtn.style.opacity = '0.5';
+    }
+    return;
   }
+
+  state.voice.recognition = new SpeechRec();
+  state.voice.recognition.continuous = false;
+  state.voice.recognition.interimResults = true;
+  state.voice.recognition.lang = 'en-US';
+
+  state.voice.recognition.onstart = () => {
+    state.voice.isRecording = true;
+    if (voiceMicBtn) voiceMicBtn.classList.add('recording');
+    if (voiceStatusIndicator) voiceStatusIndicator.style.display = 'flex';
+    if (voiceStatusText) voiceStatusText.textContent = 'Listening... Speak your academic question clearly';
+  };
+
+  state.voice.recognition.onresult = (event) => {
+    const transcript = Array.from(event.results)
+      .map((res) => res[0].transcript)
+      .join('');
+    if (questionInput) questionInput.value = transcript;
+  };
+
+  state.voice.recognition.onerror = (event) => {
+    if (voiceStatusText) voiceStatusText.textContent = `Microphone error: ${event.error}`;
+    stopVoiceRecording();
+  };
+
+  state.voice.recognition.onend = () => {
+    stopVoiceRecording();
+    if (questionInput && questionInput.value.trim().length > 0) {
+      questionInput.focus();
+    }
+  };
+}
+
+function stopVoiceRecording() {
+  state.voice.isRecording = false;
+  if (voiceMicBtn) voiceMicBtn.classList.remove('recording');
+  if (voiceStatusIndicator) voiceStatusIndicator.style.display = 'none';
+}
+
+if (voiceMicBtn) {
+  initSpeechRecognition();
+  voiceMicBtn.addEventListener('click', () => {
+    if (!state.voice.recognition) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+    if (state.voice.isRecording) {
+      state.voice.recognition.stop();
+      stopVoiceRecording();
+    } else {
+      try {
+        state.voice.recognition.start();
+      } catch (e) {
+        stopVoiceRecording();
+      }
+    }
+  });
 }
 
 // --- Tab 1: AI Tutor (Chat) ---
@@ -295,7 +466,6 @@ function appendChatMessage(sender, text, isMarkdown = true) {
   body.appendChild(header);
   body.appendChild(content);
 
-  // If bot, add Speak & Copy action buttons
   if (isBot) {
     const actions = document.createElement('div');
     actions.className = 'msg-actions';
@@ -346,11 +516,9 @@ if (questionForm) {
 
     if (!question) return;
 
-    // Add user message to chat
     appendChatMessage('user', question, false);
     questionInput.value = '';
 
-    // Show typing placeholder
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'chat-message bot-message typing-indicator';
     typingIndicator.innerHTML = `
@@ -375,14 +543,13 @@ if (questionForm) {
       loadMemory();
     } catch (error) {
       typingIndicator.remove();
-      appendChatMessage('bot', `⚠️ **Error**: ${error.message}\nPlease check your network or try changing the AI engine dropdown at the top.`);
+      appendChatMessage('bot', `⚠️ **Error**: ${error.message}\nPlease check your network or try changing the AI engine dropdown.`);
     } finally {
       sendBtn.disabled = false;
       questionInput.focus();
     }
   });
 
-  // Enter sends, Shift+Enter new line
   questionInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -391,7 +558,6 @@ if (questionForm) {
   });
 }
 
-// Chips click
 document.querySelectorAll('.chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     if (questionInput) {
@@ -417,6 +583,273 @@ if (clearChatBtn) {
         </div>
       </div>
     `;
+  });
+}
+
+// --- Tab: Agent Architect ---
+if (architectForm) {
+  architectForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const goal = architectGoalInput.value.trim();
+    const days = Number(architectDaysInput.value || 5);
+
+    if (!goal) return;
+
+    architectStatus.style.display = 'block';
+    architectStatus.className = 'status-msg info-msg';
+    architectStatus.textContent = `Autonomous Agent initializing for goal: "${goal}"...`;
+    architectTraceBox.style.display = 'block';
+    architectResultsBox.style.display = 'none';
+
+    // Show dynamic simulated steps while backend executes
+    architectStepsList.innerHTML = `
+      <div class="trace-step-item">
+        <span class="trace-step-num">Step 1:</span>
+        <div><span class="trace-step-phase">Scanning RAG Knowledge Base...</span> Checking uploaded documents and syllabus.</div>
+      </div>
+    `;
+
+    try {
+      const data = await postJson('/api/agent/architect', {
+        goal,
+        days,
+        engine: state.selectedEngine,
+      });
+
+      state.architectData = data;
+      playNotificationChime('success');
+
+      architectStatus.style.display = 'none';
+
+      // Render Completed Execution Trace
+      if (data.reasoning_trace) {
+        architectStepsList.innerHTML = data.reasoning_trace
+          .map(
+            (st) => `
+          <div class="trace-step-item">
+            <span class="trace-step-num">Step ${st.step}:</span>
+            <div><span class="trace-step-phase">${escapeHtml(st.phase)}</span> — ${escapeHtml(st.detail)}</div>
+          </div>
+        `,
+          )
+          .join('');
+      }
+
+      // Render Curriculum
+      if (archCurriculumList && Array.isArray(data.curriculum)) {
+        archCurriculumList.innerHTML = data.curriculum
+          .map(
+            (item, idx) => `
+          <div class="plan-card">
+            <div class="plan-day-badge">Day ${idx + 1}</div>
+            <div class="plan-details"><span class="plan-text">${escapeHtml(item)}</span></div>
+          </div>
+        `,
+          )
+          .join('');
+      }
+
+      // Render Diagnostic Quiz
+      const quizItems = data.diagnostic_quiz || [];
+      if (archQuizCount) archQuizCount.textContent = quizItems.length;
+      if (archQuizList) {
+        archQuizList.innerHTML = quizItems
+          .map(
+            (q, idx) => `
+          <div class="quiz-question-card">
+            <div class="quiz-question-header"><span class="quiz-num">Q${idx + 1}</span> <span>${escapeHtml(q.question)}</span></div>
+            <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem;"><strong>Answer:</strong> ${escapeHtml(q.answer)}</div>
+          </div>
+        `,
+          )
+          .join('');
+      }
+
+      // Render Flashcards
+      const cardItems = data.flashcards || [];
+      if (archCardsCount) archCardsCount.textContent = cardItems.length;
+      if (archCardsList) {
+        archCardsList.innerHTML = cardItems
+          .map(
+            (c) => `
+          <div class="mini-card-item">
+            <div class="card-q">Q: ${escapeHtml(c.front || c.question)}</div>
+            <div class="card-a">A: ${escapeHtml(c.back || c.answer)}</div>
+          </div>
+        `,
+          )
+          .join('');
+      }
+
+      architectResultsBox.style.display = 'block';
+      loadProgress();
+    } catch (err) {
+      architectStatus.className = 'status-msg error-msg';
+      architectStatus.textContent = `Agent pipeline error: ${err.message}`;
+    }
+  });
+}
+
+// Subtab buttons inside Architect results
+document.querySelectorAll('.results-subtabs .subtab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.results-subtabs .subtab-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.architect-results .subtab-view').forEach((v) => v.classList.remove('active'));
+    btn.classList.add('active');
+    const target = document.getElementById(btn.dataset.sub);
+    if (target) target.classList.add('active');
+  });
+});
+
+if (sendToQuizTabBtn) {
+  sendToQuizTabBtn.addEventListener('click', () => {
+    if (!state.architectData || !state.architectData.diagnostic_quiz) return;
+    state.currentQuiz = {
+      topic: state.architectData.topic,
+      questions: state.architectData.diagnostic_quiz,
+    };
+    state.userQuizAnswers = {};
+    if (quizTopicDisplay) quizTopicDisplay.textContent = `Topic: ${state.architectData.topic}`;
+    if (quizProgressDisplay) quizProgressDisplay.textContent = `${state.currentQuiz.questions.length} Questions`;
+    renderQuizQuestions(state.currentQuiz.questions);
+    quizRunner.style.display = 'block';
+    quizResultsCard.style.display = 'none';
+    switchTab('tab-quiz');
+  });
+}
+
+if (sendToCardsTabBtn) {
+  sendToCardsTabBtn.addEventListener('click', () => {
+    if (!state.architectData || !state.architectData.flashcards) return;
+    state.flashcards = state.architectData.flashcards;
+    state.currentCardIndex = 0;
+    state.cardFlipped = false;
+    state.cardMastery = {};
+    renderCurrentFlashcard();
+    switchTab('tab-flashcards');
+  });
+}
+
+// --- Tab: Concept Mind Map ---
+if (conceptmapForm) {
+  conceptmapForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const topic = conceptmapTopic.value.trim();
+    if (!topic) return;
+
+    conceptmapStatus.style.display = 'block';
+    conceptmapStatus.className = 'status-msg info-msg';
+    conceptmapStatus.textContent = `Synthesizing conceptual knowledge graph for "${topic}"...`;
+    conceptmapCanvas.style.display = 'none';
+    conceptmapMermaidBox.style.display = 'none';
+
+    try {
+      const data = await postJson('/api/concept-map', { topic, engine: state.selectedEngine });
+      state.currentConceptMap = data;
+
+      conceptmapStatus.style.display = 'none';
+      conceptRoot.textContent = `✦ ${data.root?.label || topic}`;
+
+      conceptBranches.innerHTML = (data.branches || [])
+        .map(
+          (b) => `
+        <div class="concept-branch-card">
+          <h4>${escapeHtml(b.name)}</h4>
+          <p>${escapeHtml(b.desc)}</p>
+          <div class="leaf-pill-container">
+            ${(b.leaves || [])
+              .map(
+                (l) => `
+              <div class="concept-leaf-pill">
+                <strong>${escapeHtml(l.name)}:</strong> ${escapeHtml(l.desc)}
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        </div>
+      `,
+        )
+        .join('');
+
+      conceptmapCanvas.style.display = 'flex';
+
+      if (conceptmapMermaidCode && data.mermaid) {
+        conceptmapMermaidCode.textContent = data.mermaid;
+        conceptmapMermaidBox.style.display = 'block';
+        if (copyMermaidBtn) copyMermaidBtn.style.display = 'inline-block';
+      }
+    } catch (err) {
+      conceptmapStatus.className = 'status-msg error-msg';
+      conceptmapStatus.textContent = `Mind map error: ${err.message}`;
+    }
+  });
+}
+
+if (copyMermaidBtn) {
+  copyMermaidBtn.addEventListener('click', () => {
+    if (conceptmapMermaidCode) {
+      navigator.clipboard.writeText(conceptmapMermaidCode.textContent);
+      copyMermaidBtn.textContent = '✓ Copied Mermaid Code!';
+      setTimeout(() => (copyMermaidBtn.innerHTML = '📋 Copy Mermaid Syntax'), 2000);
+    }
+  });
+}
+
+// --- Tab: Code Explainer ---
+if (codeForm) {
+  codeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = codeInput.value.trim();
+    const language = codeLangSelect.value;
+    const analysis_type = codeModeSelect.value;
+
+    if (!code) return;
+
+    codeLoading.style.display = 'block';
+    codeLoading.className = 'status-msg info-msg';
+    codeLoading.textContent = `Analyzing ${language} code complexity and structure...`;
+    codeResults.style.display = 'none';
+
+    try {
+      const data = await postJson('/api/code-explain', {
+        code,
+        language,
+        analysis_type,
+        engine: state.selectedEngine,
+      });
+
+      codeLoading.style.display = 'none';
+
+      if (metricTimeComp) metricTimeComp.textContent = data.complexity?.time || 'O(n)';
+      if (metricSpaceComp) metricSpaceComp.textContent = data.complexity?.space || 'O(1)';
+      if (codeSummaryText) codeSummaryText.innerHTML = formatMarkdown(data.summary);
+
+      if (codeLinesTable && Array.isArray(data.breakdown)) {
+        codeLinesTable.innerHTML = data.breakdown
+          .map(
+            (row) => `
+          <div class="code-line-row">
+            <span class="line-num-cell">L${row.line_number}</span>
+            <span class="line-code-cell">${escapeHtml(row.code)}</span>
+            <span class="line-expl-cell">${escapeHtml(row.explanation)}</span>
+          </div>
+        `,
+          )
+          .join('');
+      }
+
+      if (codeSuggestionsList && Array.isArray(data.suggestions)) {
+        codeSuggestionsList.innerHTML = data.suggestions
+          .map((s) => `<li>${escapeHtml(s)}</li>`)
+          .join('');
+      }
+
+      codeResults.style.display = 'block';
+    } catch (err) {
+      codeLoading.className = 'status-msg error-msg';
+      codeLoading.textContent = `Analysis error: ${err.message}`;
+    }
   });
 }
 
@@ -460,12 +893,10 @@ if (planForm) {
 
       if (exportPlanBtn) exportPlanBtn.style.display = 'inline-block';
 
-      // Attach checkbox listener to update completed topics
       document.querySelectorAll('.plan-check').forEach((chk) => {
         chk.addEventListener('change', async () => {
           if (chk.checked) {
             playNotificationChime('success');
-            // update completed topics
             const curr = Number(statTopics.textContent || 0);
             await postJson('/api/progress', { completed_topics: curr + 1 });
             loadProgress();
@@ -582,7 +1013,6 @@ function renderQuizQuestions(questions) {
     quizQuestionsList.appendChild(card);
   });
 
-  // Track answers
   quizQuestionsList.querySelectorAll('input[type="radio"]').forEach((radio) => {
     radio.addEventListener('change', (e) => {
       const qIdx = e.target.dataset.qIdx;
@@ -603,7 +1033,6 @@ if (submitQuizBtn) {
     if (!state.currentQuiz) return;
     const { topic, questions } = state.currentQuiz;
 
-    // Convert dictionary answers to array
     const userAnswersList = questions.map((_, idx) => state.userQuizAnswers[idx] || '');
 
     submitQuizBtn.disabled = true;
@@ -620,7 +1049,6 @@ if (submitQuizBtn) {
       playNotificationChime('quiz');
       displayQuizResults(evalData, questions, userAnswersList);
 
-      // Increment progress quizzes count
       const curr = Number(statQuizzes.textContent || 0);
       await postJson('/api/progress', { quizzes_completed: curr + 1 });
       loadProgress();
@@ -651,7 +1079,7 @@ function displayQuizResults(evalData, questions, userAnswers) {
 
   let breakdownHtml = '';
   breakdown.forEach((item, idx) => {
-    const isCorrect = item.correct;
+    const isCorrect = item.correct || item.is_correct;
     breakdownHtml += `
       <div class="result-breakdown-item ${isCorrect ? 'item-correct' : 'item-incorrect'}">
         <div class="item-status-bar">
@@ -663,7 +1091,7 @@ function displayQuizResults(evalData, questions, userAnswers) {
         <div class="item-question"><strong>Q:</strong> ${escapeHtml(item.question)}</div>
         <div class="item-answers-comparison">
           <div class="user-ans">Your Answer: <span class="ans-value">${escapeHtml(item.user_answer || '(None given)')}</span></div>
-          <div class="correct-ans">Expected Answer: <span class="ans-value">${escapeHtml(item.expected_answer)}</span></div>
+          <div class="correct-ans">Expected Answer: <span class="ans-value">${escapeHtml(item.correct_answer || item.expected_answer)}</span></div>
         </div>
         ${item.explanation ? `<div class="item-explanation">💡 ${escapeHtml(item.explanation)}</div>` : ''}
       </div>
@@ -761,7 +1189,6 @@ function renderCurrentFlashcard() {
   cardBackText.textContent = card.back || card.answer;
   deckCounter.textContent = `${state.currentCardIndex + 1} / ${state.flashcards.length}`;
 
-  // Mastery visual indicator
   const mastery = state.cardMastery[state.currentCardIndex];
   flashcardElement.classList.remove('status-mastered', 'status-review');
   if (mastery === 'mastered') {
@@ -803,9 +1230,7 @@ if (nextCardBtn) {
   });
 }
 
-// Arrow key navigation
 window.addEventListener('keydown', (e) => {
-  // Only if flashcard tab is active and not focused inside an input/textarea
   const activeTab = document.querySelector('.tab-content.active');
   if (activeTab && activeTab.id === 'tab-flashcards' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
     if (e.key === 'ArrowLeft') {
@@ -822,7 +1247,6 @@ window.addEventListener('keydown', (e) => {
 if (shuffleCardsBtn) {
   shuffleCardsBtn.addEventListener('click', () => {
     if (state.flashcards.length < 2) return;
-    // Fisher-Yates shuffle
     for (let i = state.flashcards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [state.flashcards[i], state.flashcards[j]] = [state.flashcards[j], state.flashcards[i]];
@@ -838,7 +1262,6 @@ if (markMasteredBtn) {
     state.cardMastery[state.currentCardIndex] = 'mastered';
     renderCurrentFlashcard();
     playNotificationChime('success');
-    // auto advance
     setTimeout(() => nextCardBtn.click(), 400);
   });
 }
@@ -874,7 +1297,6 @@ function updateTimerDisplay() {
   const secs = state.pomodoro.remainingSeconds % 60;
   timerDigits.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
-  // SVG ring circumference = 2 * PI * r = 2 * PI * 115 ≈ 722.56
   const totalCircumference = 2 * Math.PI * 115;
   const progressRatio = state.pomodoro.remainingSeconds / state.pomodoro.totalSeconds;
   const strokeDashoffset = totalCircumference * (1 - progressRatio);
@@ -922,7 +1344,6 @@ function startTimer() {
       state.pomodoro.remainingSeconds--;
       updateTimerDisplay();
     } else {
-      // Completed session
       pauseTimer();
       playNotificationChime('success');
 
@@ -930,7 +1351,6 @@ function startTimer() {
         state.pomodoro.completedSessions++;
         localStorage.setItem('studybuddy-pomodoro-count', state.pomodoro.completedSessions);
 
-        // Auto-log to backend progress
         try {
           const res = await postJson('/api/pomodoro', {
             duration_minutes: state.pomodoro.focusDurationMinutes,
@@ -943,9 +1363,7 @@ function startTimer() {
           }
 
           loadProgress();
-        } catch (e) {
-          // log error
-        }
+        } catch (e) {}
       } else {
         if (pomodoroLogFeedback) {
           pomodoroLogFeedback.textContent = '🔔 Break over! Ready for another productive focus round?';
@@ -986,10 +1404,9 @@ if (timerResetBtn) {
   });
 }
 
-// Initial timer display setup
 updateTimerDisplay();
 
-// --- Tab 6: Course Materials Library & AI Summarizer ---
+// --- Tab 6: Course Materials Library & Document Viewer Modal ---
 async function loadMaterials() {
   try {
     const response = await fetch('/api/materials');
@@ -999,12 +1416,83 @@ async function loadMaterials() {
     if (materialsCount) materialsCount.textContent = list.length;
     if (materialsResult) {
       materialsResult.innerHTML = list.length
-        ? list.map((name) => `<li><span class="file-icon">📄</span> <span class="file-name">${escapeHtml(name)}</span></li>`).join('')
+        ? list
+            .map(
+              (name) => `
+          <li>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+              <span><span class="file-icon">📄</span> <span class="file-name">${escapeHtml(name)}</span></span>
+              <button type="button" class="icon-link-btn view-doc-btn" data-doc="${escapeHtml(name)}">👁 View</button>
+            </div>
+          </li>
+        `,
+            )
+            .join('')
         : '<li class="empty-list">No course documents ingested yet. Drop your first notes above!</li>';
+
+      // Attach click listeners to view doc buttons
+      document.querySelectorAll('.view-doc-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const docName = btn.dataset.doc;
+          openDocumentModal(docName);
+        });
+      });
     }
-  } catch (e) {
-    //
+  } catch (e) {}
+}
+
+async function openDocumentModal(docName) {
+  if (!docModal) return;
+  state.activeDoc = docName;
+  docModalTitle.textContent = docName;
+  docModalContent.textContent = 'Fetching document content...';
+  docModal.style.display = 'flex';
+
+  try {
+    const res = await fetch(`/api/materials/${encodeURIComponent(docName)}/content`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to read document');
+    docModalContent.textContent = data.content || '(Empty document)';
+  } catch (err) {
+    docModalContent.textContent = `Error loading document: ${err.message}`;
   }
+}
+
+if (closeDocModalBtn) {
+  closeDocModalBtn.addEventListener('click', () => {
+    if (docModal) docModal.style.display = 'none';
+  });
+}
+
+// Quick Actions inside Document Modal
+if (docQuickSummarize) {
+  docQuickSummarize.addEventListener('click', () => {
+    if (!state.activeDoc) return;
+    docModal.style.display = 'none';
+    summaryTopicInput.value = state.activeDoc.replace(/\.(md|txt|pdf|docx|pptx)$/i, '');
+    switchTab('tab-library');
+    summaryForm.dispatchEvent(new Event('submit'));
+  });
+}
+
+if (docQuickCards) {
+  docQuickCards.addEventListener('click', () => {
+    if (!state.activeDoc) return;
+    docModal.style.display = 'none';
+    flashcardTopicInput.value = state.activeDoc.replace(/\.(md|txt|pdf|docx|pptx)$/i, '');
+    switchTab('tab-flashcards');
+    flashcardForm.dispatchEvent(new Event('submit'));
+  });
+}
+
+if (docQuickQuiz) {
+  docQuickQuiz.addEventListener('click', () => {
+    if (!state.activeDoc) return;
+    docModal.style.display = 'none';
+    quizTopicInput.value = state.activeDoc.replace(/\.(md|txt|pdf|docx|pptx)$/i, '');
+    switchTab('tab-quiz');
+    quizForm.dispatchEvent(new Event('submit'));
+  });
 }
 
 if (refreshMaterialsBtn) {
@@ -1035,7 +1523,7 @@ if (uploadForm) {
       if (!response.ok) throw new Error(data.error || 'Upload failed');
 
       uploadResult.className = 'status-msg success-msg';
-      uploadResult.textContent = `✓ Ingested "${data.filename}" (${data.chunks} semantic chunks indexed).`;
+      uploadResult.textContent = `✓ Ingested "${data.filename || file.name}" successfully into RAG index.`;
       materialFileInput.value = '';
       await loadMaterials();
     } catch (err) {
@@ -1063,12 +1551,13 @@ if (summaryForm) {
       summaryLoading.style.display = 'none';
 
       let keyTermsHtml = '';
-      if (Array.isArray(data.key_terms) && data.key_terms.length > 0) {
+      const termsList = data.key_terms || data.key_concepts || [];
+      if (Array.isArray(termsList) && termsList.length > 0) {
         keyTermsHtml = `
           <div class="summary-terms-card">
             <h4>🔑 Key Academic Concepts & Glossary</h4>
             <ul class="key-terms-list">
-              ${data.key_terms
+              ${termsList
                 .map(
                   (term) => `
                 <li>
@@ -1104,12 +1593,13 @@ if (summaryForm) {
 if (exportSummaryBtn) {
   exportSummaryBtn.addEventListener('click', async () => {
     if (!state.currentSummary) return;
-    const { topic, summary, key_terms } = state.currentSummary;
+    const { topic, summary, key_terms, key_concepts } = state.currentSummary;
     let content = `# Document Summary: ${topic || 'Course Notes'}\n\nGenerated by StudyBuddy AI\n\n${summary}\n\n`;
 
-    if (key_terms && key_terms.length) {
+    const terms = key_terms || key_concepts || [];
+    if (terms && terms.length) {
       content += `## Key Concepts & Glossary\n\n`;
-      key_terms.forEach((t) => {
+      terms.forEach((t) => {
         content += `- **${t.term || t.concept}**: ${t.definition || t.explanation}\n`;
       });
     }
@@ -1131,9 +1621,7 @@ async function loadMemory() {
     if (memoryResult) {
       memoryResult.textContent = data.summary || 'No conversation history recorded yet.';
     }
-  } catch (e) {
-    //
-  }
+  } catch (e) {}
 }
 
 if (memoryButton) memoryButton.addEventListener('click', loadMemory);
@@ -1168,6 +1656,12 @@ if (localStorage.getItem('studybuddy-theme') === 'light') {
     if (icon) icon.textContent = '☾';
   }
 }
+
+// --- Close Modals on Backdrop Click ---
+window.addEventListener('click', (e) => {
+  if (e.target === docModal) docModal.style.display = 'none';
+  if (e.target === badgesModal) badgesModal.style.display = 'none';
+});
 
 // --- Initialization ---
 loadAiStatus();

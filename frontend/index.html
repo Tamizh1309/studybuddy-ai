@@ -59,6 +59,13 @@
 
       <!-- Stats Momentum Bar -->
       <section class="stats-row" id="progress-bar">
+        <div class="stat-card streak-card">
+          <div class="stat-icon red-icon">🔥</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-streak">1</span>
+            <span class="stat-lbl">Day Streak</span>
+          </div>
+        </div>
         <div class="stat-card">
           <div class="stat-icon purple-icon">◈</div>
           <div class="stat-info">
@@ -87,12 +94,25 @@
             <span class="stat-lbl">Focus Sessions</span>
           </div>
         </div>
+        <div class="stat-card clickable-stat" id="view-badges-card" title="Click to view all achievements">
+          <div class="stat-icon gold-icon">🏆</div>
+          <div class="stat-info">
+            <span class="stat-val" id="stat-badges-count">1</span>
+            <span class="stat-lbl">Badges (View)</span>
+          </div>
+        </div>
       </section>
 
       <!-- Workspace Navigation Tabs -->
       <nav class="tabs-nav" aria-label="Study tools">
         <button class="tab-btn active" data-tab="tab-tutor" type="button">
           <span class="tab-icon">💬</span> AI Tutor
+        </button>
+        <button class="tab-btn" data-tab="tab-architect" type="button">
+          <span class="tab-icon">🤖</span> Agent Architect
+        </button>
+        <button class="tab-btn" data-tab="tab-conceptmap" type="button">
+          <span class="tab-icon">🕸️</span> Concept Map
         </button>
         <button class="tab-btn" data-tab="tab-planner" type="button">
           <span class="tab-icon">📅</span> Study Planner
@@ -102,6 +122,9 @@
         </button>
         <button class="tab-btn" data-tab="tab-flashcards" type="button">
           <span class="tab-icon">🗂</span> 3D Flashcards
+        </button>
+        <button class="tab-btn" data-tab="tab-code" type="button">
+          <span class="tab-icon">💻</span> Code Explainer
         </button>
         <button class="tab-btn" data-tab="tab-pomodoro" type="button">
           <span class="tab-icon">⏱</span> Focus Timer
@@ -137,7 +160,7 @@
                     <span class="msg-time">Just now</span>
                   </div>
                   <div class="msg-content">
-                    Hello! I'm your AI tutor. Ask me any question about your course notes, or choose a topic below. I can explain step-by-step, give real-world examples, or prepare exam-ready answers.
+                    Hello! I'm your AI tutor. Ask me any question about your course notes, speak via microphone, or choose a topic below. I can explain step-by-step, give real-world examples, or prepare exam-ready answers.
                   </div>
                 </div>
               </div>
@@ -170,12 +193,112 @@
               </div>
 
               <div class="input-send-row">
-                <textarea id="question-input" rows="2" placeholder="Type your academic or technical question... (Press Enter to send, Shift+Enter for newline)"></textarea>
+                <textarea id="question-input" rows="2" placeholder="Type or speak your academic question... (Press Enter to send, Shift+Enter for newline)"></textarea>
+                <button type="button" id="voice-mic-btn" class="icon-btn voice-btn" title="Speak question via microphone" aria-label="Microphone Voice Input">
+                  <span class="mic-icon">🎙</span>
+                  <span class="mic-pulse-ring"></span>
+                </button>
                 <button type="submit" id="send-btn" class="send-btn">
                   <span>Send</span> <span class="send-arrow">→</span>
                 </button>
               </div>
+              <div id="voice-status-indicator" class="voice-status-bar" style="display:none;">
+                <span class="pulse-dot"></span> <span id="voice-status-text">Listening... Speak clearly into your microphone</span>
+              </div>
             </form>
+          </div>
+        </section>
+
+        <!-- TAB: AGENT ARCHITECT -->
+        <section id="tab-architect" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">AUTONOMOUS MULTI-STEP AGENT</span>
+                <h2>Agentic Study Architect</h2>
+                <p class="section-desc">State your academic goal. The agent autonomously analyzes the syllabus, formulates a timeline, builds a diagnostic quiz, and generates active-recall cards.</p>
+              </div>
+            </div>
+
+            <form id="architect-form" class="standard-form">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label for="architect-goal">Your Target Academic Goal</label>
+                  <input id="architect-goal" type="text" value="Master Neural Networks and Deep Learning in 5 days" placeholder="e.g., Prepare for Computer Science Midterm" required />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="architect-days">Timeline (Days)</label>
+                  <input id="architect-days" type="number" min="1" max="14" value="5" required />
+                </div>
+                <div class="form-group flex-btn">
+                  <button type="submit" id="architect-submit-btn" class="action-btn">Run Agent Pipeline 🚀</button>
+                </div>
+              </div>
+            </form>
+
+            <div id="architect-status" class="status-msg" style="display:none;"></div>
+
+            <!-- Agent Reasoning Trace Display -->
+            <div id="architect-trace-box" class="architect-trace-container" style="display:none;">
+              <h3>✦ Agent Autonomous Execution Trace</h3>
+              <div id="architect-steps-list" class="trace-steps-list"></div>
+            </div>
+
+            <!-- Architect Synthesized Artifacts -->
+            <div id="architect-results-box" class="architect-results" style="display:none;">
+              <div class="results-subtabs">
+                <button type="button" class="subtab-btn active" data-sub="sub-curriculum">📅 Generated Curriculum</button>
+                <button type="button" class="subtab-btn" data-sub="sub-quiz">📝 Diagnostic Quiz (<span id="arch-quiz-count">0</span>)</button>
+                <button type="button" class="subtab-btn" data-sub="sub-cards">🗂 Recall Deck (<span id="arch-cards-count">0</span>)</button>
+              </div>
+
+              <div id="sub-curriculum" class="subtab-view active">
+                <div id="arch-curriculum-list" class="plan-timeline"></div>
+              </div>
+
+              <div id="sub-quiz" class="subtab-view">
+                <div id="arch-quiz-list" class="quiz-questions-container"></div>
+                <button id="send-to-quiz-tab-btn" class="primary-btn small-btn" type="button">Take this Quiz in Quiz Workspace →</button>
+              </div>
+
+              <div id="sub-cards" class="subtab-view">
+                <div id="arch-cards-list" class="mini-cards-grid"></div>
+                <button id="send-to-cards-tab-btn" class="primary-btn small-btn" type="button">Practice Deck in 3D Flashcards →</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB: CONCEPT MIND MAP -->
+        <section id="tab-conceptmap" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">VISUAL KNOWLEDGE GRAPH</span>
+                <h2>Interactive Concept Mind Map</h2>
+                <p class="section-desc">Generate structured visual concept hierarchies and relationship graphs directly from your notes.</p>
+              </div>
+              <button id="copy-mermaid-btn" class="secondary-btn small-btn" type="button" style="display:none;">📋 Copy Mermaid Syntax</button>
+            </div>
+
+            <form id="conceptmap-form" class="standard-form">
+              <div class="input-send-row">
+                <input id="conceptmap-topic" type="text" value="artificial intelligence" placeholder="Enter topic for visual mind map..." required />
+                <button type="submit" class="action-btn">Generate Mind Map →</button>
+              </div>
+            </form>
+
+            <div id="conceptmap-status" class="status-msg" style="display:none;"></div>
+
+            <div id="conceptmap-canvas" class="conceptmap-container" style="display:none;">
+              <div class="concept-root-node" id="concept-root">Root Concept</div>
+              <div class="concept-branches-grid" id="concept-branches"></div>
+            </div>
+
+            <div id="conceptmap-mermaid-box" class="mermaid-raw-box" style="display:none;">
+              <h4>Mermaid.js Graph Definition</h4>
+              <pre><code id="conceptmap-mermaid-code"></code></pre>
+            </div>
           </div>
         </section>
 
@@ -324,6 +447,73 @@
               </div>
             </div>
           </div>
+        <!-- TAB: CODE EXPLAINER & COMPLEXITY ANALYZER -->
+        <section id="tab-code" class="tab-content">
+          <div class="card glass-card">
+            <div class="card-header">
+              <div>
+                <span class="section-tag">CS & ENGINEERING INTELLIGENCE</span>
+                <h2>Code Explainer & Complexity Analyzer</h2>
+                <p class="section-desc">Line-by-line breakdown, Big-O runtime & memory analysis, bug detection, and optimization tips.</p>
+              </div>
+            </div>
+
+            <form id="code-form" class="standard-form">
+              <div class="control-row">
+                <select id="code-lang-select" aria-label="Programming Language">
+                  <option value="python">Python</option>
+                  <option value="javascript">JavaScript / TypeScript</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="sql">SQL</option>
+                  <option value="go">Go</option>
+                </select>
+
+                <select id="code-mode-select" aria-label="Analysis Mode">
+                  <option value="explain">Explain Line-by-Line</option>
+                  <option value="complexity">Big-O Time & Space Complexity</option>
+                  <option value="bugs">Find Bugs & Edge Cases</option>
+                  <option value="optimize">Optimize Code</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-top: 1rem;">
+                <textarea id="code-input" rows="6" placeholder="Paste your code snippet here... (e.g. function, class, algorithm, SQL query)" class="code-textarea" required></textarea>
+              </div>
+
+              <button type="submit" class="action-btn" id="code-submit-btn">Analyze Code Snippet ⚡</button>
+            </form>
+
+            <div id="code-loading" class="status-msg" style="display:none;"></div>
+
+            <div id="code-results" class="code-results-box" style="display:none;">
+              <div class="complexity-metrics-row">
+                <div class="complexity-pill time-pill">
+                  <span class="pill-label">Time Complexity</span>
+                  <span id="metric-time-comp" class="pill-val">O(n)</span>
+                </div>
+                <div class="complexity-pill space-pill">
+                  <span class="pill-label">Space Complexity</span>
+                  <span id="metric-space-comp" class="pill-val">O(1)</span>
+                </div>
+              </div>
+
+              <div class="code-summary-card">
+                <h3>Analysis Summary</h3>
+                <div id="code-summary-text" class="summary-body"></div>
+              </div>
+
+              <div id="code-breakdown-section" class="code-breakdown-container">
+                <h4>Line-by-Line Breakdown</h4>
+                <div id="code-lines-table" class="code-lines-list"></div>
+              </div>
+
+              <div id="code-suggestions-section" class="code-suggestions-card">
+                <h4>💡 Engineering Insights & Optimization</h4>
+                <ul id="code-suggestions-list" class="suggestions-list"></ul>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- TAB 5: POMODORO FOCUS TIMER -->
@@ -439,6 +629,47 @@
         </div>
         <pre id="memory-result">No conversation history yet.</pre>
       </section>
+
+      <!-- In-Browser Document Viewer Modal -->
+      <div id="doc-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-window doc-modal-window glass-card">
+          <div class="modal-header">
+            <div class="modal-title-box">
+              <span class="section-tag">DOCUMENT VIEWER</span>
+              <h3 id="doc-modal-title">Document Content</h3>
+            </div>
+            <button id="close-doc-modal-btn" class="icon-btn modal-close-btn" type="button" aria-label="Close modal">✕</button>
+          </div>
+
+          <div class="doc-quick-actions-bar">
+            <button id="doc-quick-summarize" class="secondary-btn small-btn" type="button">📑 Summarize Document</button>
+            <button id="doc-quick-cards" class="secondary-btn small-btn" type="button">🗂 Generate 3D Flashcards</button>
+            <button id="doc-quick-quiz" class="secondary-btn small-btn" type="button">📝 Quiz on Document</button>
+          </div>
+
+          <div class="modal-body doc-modal-body">
+            <pre><code id="doc-modal-content">Loading material content...</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Achievement Badges Showcase Modal -->
+      <div id="badges-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-window badges-modal-window glass-card">
+          <div class="modal-header">
+            <div class="modal-title-box">
+              <span class="section-tag">MOMENTUM & MASTERY</span>
+              <h3>Learning Achievements & Badges</h3>
+            </div>
+            <button id="close-badges-modal-btn" class="icon-btn modal-close-btn" type="button" aria-label="Close modal">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <p class="badges-desc">Badges unlock automatically as you complete study milestones, quizzes, focus sessions, and autonomous agent runs.</p>
+            <div id="badges-grid" class="badges-grid-container"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- Footer -->
       <footer class="app-footer">

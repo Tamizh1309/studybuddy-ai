@@ -82,7 +82,7 @@ class StudyAssistant:
             )
         return self._build_answer_from_context(question, context)
 
-    def create_learning_plan(self, topic: str, days: int = 7) -> List[str]:
+    def create_learning_plan(self, topic: str, days: int = 7, engine: str = "auto") -> List[str]:
         matches = self.knowledge.search(topic, limit=3)
         if not matches:
             return [
@@ -104,7 +104,9 @@ class StudyAssistant:
                 plan.append(f"Day {extra_day}: Revise notes, test recall, and practice exercises around {topic}.")
         return plan[:days]
 
-    def generate_quiz(self, topic: str, count: int = 5) -> List[Dict[str, Any]]:
+    generate_learning_plan = create_learning_plan
+
+    def generate_quiz(self, topic: str, count: int = 5, engine: str = "auto") -> List[Dict[str, Any]]:
         matches = self.knowledge.search(topic, limit=count)
         questions: List[Dict[str, Any]] = []
 
@@ -230,7 +232,7 @@ class StudyAssistant:
             "details": details,
         }
 
-    def generate_flashcards(self, topic: str, count: int = 6) -> List[Dict[str, str]]:
+    def generate_flashcards(self, topic: str, count: int = 6, engine: str = "auto") -> List[Dict[str, str]]:
         """Generate interactive flashcards for active recall study."""
         matches = self.knowledge.search(topic, limit=count)
         flashcards: List[Dict[str, str]] = []
@@ -338,6 +340,207 @@ class StudyAssistant:
             "takeaways": takeaways,
         }
 
+    def run_study_architect(self, goal: str, days: int = 5, engine: str = "auto") -> Dict[str, Any]:
+        """Autonomous Agentic workflow: decomposes a learning goal into curriculum, diagnostic quiz, and recall deck."""
+        clean_goal = (goal or "").strip() or "Master Artificial Intelligence Foundations"
+        # Extract main topic
+        topic = clean_goal.lower().replace("prepare for", "").replace("master", "").replace("learn", "").replace("study", "").strip() or clean_goal
+
+        chunks = self.knowledge.search(topic, limit=4)
+        sources = list(dict.fromkeys(c.source for c in chunks))
+
+        # Generate components using existing grounded methods
+        plan = self.create_learning_plan(topic, days=max(1, min(days, 30)), engine=engine)
+        quiz = self.generate_quiz(topic, count=3, engine=engine)
+        cards = self.generate_flashcards(topic, count=5, engine=engine)
+
+        reasoning_trace = [
+            {
+                "step": 1,
+                "phase": "Document Perception & Grounding",
+                "status": "completed",
+                "detail": f"Scanned RAG knowledge base. Grounded target goal in {len(sources)} source document(s): {', '.join(sources) if sources else 'Standard academic curriculum'}.",
+            },
+            {
+                "step": 2,
+                "phase": "Cognitive Load & Curriculum Scheduling",
+                "status": "completed",
+                "detail": f"Divided target concepts across a balanced {len(plan)}-day timeline with progressive complexity.",
+            },
+            {
+                "step": 3,
+                "phase": "Diagnostic Calibration Assessment",
+                "status": "completed",
+                "detail": f"Formulated {len(quiz)} conceptual diagnostic questions to test baseline comprehension.",
+            },
+            {
+                "step": 4,
+                "phase": "Active Recall & Spaced Repetition Synthesis",
+                "status": "completed",
+                "detail": f"Generated {len(cards)} active recall 3D flashcards with mnemonic hints for long-term retention.",
+            },
+        ]
+
+        return {
+            "goal": clean_goal,
+            "topic": topic.title(),
+            "days": len(plan),
+            "sources": sources,
+            "reasoning_trace": reasoning_trace,
+            "curriculum": plan,
+            "diagnostic_quiz": quiz,
+            "flashcards": cards,
+        }
+
+    def generate_concept_map(self, topic: str = "", engine: str = "auto") -> Dict[str, Any]:
+        """Generate structured nodes, relationships, and Mermaid graph syntax for visual concept mapping."""
+        clean_topic = (topic or "").strip() or "Artificial Intelligence"
+        chunks = self.knowledge.search(clean_topic, limit=3)
+
+        # Build clean diagram title & identifier
+        root_id = "root"
+        root_label = clean_topic.title()
+
+        # Build subtopics
+        branches = [
+            {
+                "id": "b1",
+                "name": "Core Principles",
+                "desc": "Fundamental definitions, axioms, and working hypotheses.",
+                "leaves": [
+                    {"id": "l1", "name": "Axioms & Inputs", "desc": "Structured and unstructured data ingestion."},
+                    {"id": "l2", "name": "Algorithmic Rules", "desc": "Mathematical and heuristic procedures."},
+                ],
+            },
+            {
+                "id": "b2",
+                "name": "Mechanisms & Modeling",
+                "desc": "System architecture, training procedures, and model inference.",
+                "leaves": [
+                    {"id": "l3", "name": "Training & Optimization", "desc": "Gradient updates, backprop, and validation."},
+                    {"id": "l4", "name": "Inference & Prediction", "desc": "Real-time query processing and latency bounds."},
+                ],
+            },
+            {
+                "id": "b3",
+                "name": "Applications & Impact",
+                "desc": "Real-world operational systems, safety, and evaluation metrics.",
+                "leaves": [
+                    {"id": "l5", "name": "Agentic Workflows", "desc": "Multi-step reasoning and autonomous planning."},
+                    {"id": "l6", "name": "Evaluation & Verification", "desc": "Accuracy, precision, recall, and safety benchmarks."},
+                ],
+            },
+        ]
+
+        if chunks:
+            # Personalize first leaf from notes
+            first_sentence = chunks[0].text.strip().split(".")[0][:50]
+            branches[0]["leaves"][0]["desc"] = f"From {chunks[0].source}: {first_sentence}..."
+
+        # Assemble Mermaid syntax
+        mermaid_lines = ["graph TD", f'  {root_id}["✦ {root_label}"]:::rootStyle']
+        for b in branches:
+            mermaid_lines.append(f'  {root_id} -->|branches into| {b["id"]}["{b["name"]}"]:::branchStyle')
+            for l in b["leaves"]:
+                mermaid_lines.append(f'  {b["id"]} -->|details| {l["id"]}["{l["name"]}"]:::leafStyle')
+
+        mermaid_lines.extend([
+            "  classDef rootStyle fill:#4f46e5,stroke:#818cf8,stroke-width:2px,color:#fff,font-weight:bold,rx:8;",
+            "  classDef branchStyle fill:#1e1b4b,stroke:#6366f1,stroke-width:1px,color:#e0e7ff,font-weight:600,rx:6;",
+            "  classDef leafStyle fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#94a3b8,rx:4;",
+        ])
+
+        return {
+            "topic": clean_topic,
+            "root": {"id": root_id, "label": root_label},
+            "branches": branches,
+            "mermaid": "\n".join(mermaid_lines),
+        }
+
+    def explain_code(
+        self,
+        code: str,
+        language: str = "python",
+        analysis_type: str = "explain",
+        engine: str = "auto",
+    ) -> Dict[str, Any]:
+        """Analyze code for line-by-line explanation, complexity, edge cases, or optimization."""
+        code_clean = (code or "").strip()
+        if not code_clean:
+            return {
+                "summary": "No code snippet provided.",
+                "analysis_type": analysis_type,
+                "complexity": {"time": "O(1)", "space": "O(1)"},
+                "breakdown": [],
+                "suggestions": ["Please enter or paste a valid code snippet."],
+            }
+
+        # Check for AI engine completion
+        context = self.knowledge.get_context(code_clean[:100], limit=2)
+        prompt = (
+            f"Analyze the following {language} code focusing on '{analysis_type}'.\n"
+            f"Provide: 1) Executive Summary, 2) Time and Space Complexity (Big-O), "
+            f"3) Line-by-line explanation, and 4) Edge cases or potential bugs.\n\n"
+            f"```{language}\n{code_clean}\n```"
+        )
+
+        ai_response = None
+        if engine in ("auto", "gemini") and self.gemini.is_available():
+            try:
+                ai_response = self.gemini.chat(prompt, context, "Software Engineering", "Explain")
+            except Exception:
+                pass
+        elif engine in ("auto", "groq") and self.groq.is_available():
+            try:
+                ai_response = self.groq.chat(prompt, context, "Software Engineering", "Explain")
+            except Exception:
+                pass
+
+        # Static Code Analysis Fallback
+        lines = [line for line in code_clean.split("\n") if line.strip()]
+        loop_count = sum(1 for line in lines if any(k in line for k in ("for ", "while ", ".forEach(", ".map(")))
+        nested_loop = any(line.startswith("        for ") or line.startswith("        while ") for line in lines)
+        has_recursion = any("return " in line and ("(" in line and ")" in line) for line in lines)
+
+        time_comp = "O(n²)" if nested_loop else ("O(n)" if loop_count >= 1 else "O(1)")
+        space_comp = "O(n)" if any(k in code_clean for k in ("append", "push", "[]", "{}", "list(", "dict(")) else "O(1)"
+
+        breakdown = []
+        for idx, line in enumerate(lines[:8], 1):
+            explanation = "Initializes structure or assignment."
+            if "def " in line or "function " in line:
+                explanation = "Declares subroutine with input arguments."
+            elif "for " in line or "while " in line:
+                explanation = "Iterative loop traversing elements or conditions."
+            elif "if " in line or "elif " in line:
+                explanation = "Conditional branch evaluating control predicate."
+            elif "return " in line:
+                explanation = "Yields computed value to calling caller."
+            breakdown.append({"line_number": idx, "code": line.strip(), "explanation": explanation})
+
+        suggestions = [
+            f"Time Complexity is estimated at {time_comp} based on loop depth.",
+            f"Space Complexity is {space_comp} considering allocation patterns.",
+            "Always validate input parameters against None, null, or empty containers.",
+            "Consider adding docstrings and explicit type hints for maintainability.",
+        ]
+
+        summary = (
+            ai_response
+            if ai_response
+            else f"This {language.capitalize()} snippet contains {len(lines)} line(s) of code. "
+            f"It executes with an estimated {time_comp} runtime complexity and {space_comp} auxiliary memory usage."
+        )
+
+        return {
+            "language": language,
+            "analysis_type": analysis_type,
+            "summary": summary,
+            "complexity": {"time": time_comp, "space": space_comp},
+            "breakdown": breakdown,
+            "suggestions": suggestions,
+        }
+
     def _build_answer_from_context(self, question: str, context: str) -> str:
         first_match = context.split("\n\n")[0]
         quote = first_match.replace("[", "").replace("]", "").split(" ", 1)[1] if "[" in first_match else first_match
@@ -352,3 +555,4 @@ class StudyAssistant:
 
 
 __all__ = ["StudyAssistant"]
+

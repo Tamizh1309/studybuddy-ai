@@ -64,6 +64,11 @@ def health() -> tuple[dict, int]:
                 "pdf_docx_pptx_ingestion",
                 "pwa",
                 "text_to_speech",
+                "agent_architect",
+                "concept_map",
+                "code_explainer",
+                "document_viewer",
+                "streaks_and_badges",
             ],
         }
     ), 200
@@ -269,6 +274,79 @@ def ai_status() -> tuple[dict, int]:
     ), 200
 
 
+@app.route("/api/agent/architect", methods=["POST"])
+def agent_architect() -> tuple[dict, int]:
+    """Autonomous agentic pipeline generating holistic study plan, diagnostic quiz, and recall deck."""
+    payload = request.get_json(silent=True) or {}
+    goal = (payload.get("goal") or "").strip() or "Master Artificial Intelligence Foundations"
+    try:
+        days = int(payload.get("days", 5) or 5)
+    except (TypeError, ValueError):
+        days = 5
+    engine = (payload.get("engine") or "auto").strip().lower()
+
+    result = assistant.run_study_architect(goal, days=days, engine=engine)
+
+    # Award "Agent Architect" badge
+    progress_data = _get_or_create_progress()
+    badges = set(progress_data.get("badges", []))
+    badges.add("Agent Architect")
+    progress_data["badges"] = sorted(list(badges))
+    PROGRESS_PATH.write_text(json.dumps(progress_data, indent=2), encoding="utf-8")
+    result["progress"] = progress_data
+
+    return jsonify(result), 200
+
+
+@app.route("/api/concept-map", methods=["POST"])
+def concept_map() -> tuple[dict, int]:
+    """Generate structured concept nodes, relationships, and Mermaid graph syntax."""
+    payload = request.get_json(silent=True) or {}
+    topic = (payload.get("topic") or "").strip()
+    engine = (payload.get("engine") or "auto").strip().lower()
+
+    result = assistant.generate_concept_map(topic=topic, engine=engine)
+    return jsonify(result), 200
+
+
+@app.route("/api/code-explain", methods=["POST"])
+def code_explain() -> tuple[dict, int]:
+    """Breakdown code snippets with Big-O time/space complexity, edge cases, and optimizations."""
+    payload = request.get_json(silent=True) or {}
+    code = (payload.get("code") or "").strip()
+    language = (payload.get("language") or "python").strip().lower()
+    analysis_type = (payload.get("analysis_type") or "explain").strip().lower()
+    engine = (payload.get("engine") or "auto").strip().lower()
+
+    if not code:
+        return jsonify({"error": "Code snippet is required."}), 400
+
+    result = assistant.explain_code(code, language=language, analysis_type=analysis_type, engine=engine)
+    return jsonify(result), 200
+
+
+@app.route("/api/materials/<path:filename>/content")
+def material_content(filename: str) -> tuple[dict, int]:
+    """Read full text content of an ingested document for in-browser viewer."""
+    clean_name = Path(filename).name
+    target_path = MATERIALS_DIR / clean_name
+    if not target_path.exists():
+        target_path = MATERIALS_DIR / f"{clean_name}.md"
+    if not target_path.exists():
+        # Try matching without suffix
+        matches = list(MATERIALS_DIR.glob(f"{clean_name}*"))
+        if matches:
+            target_path = matches[0]
+        else:
+            return jsonify({"error": f"Material '{clean_name}' not found."}), 404
+
+    try:
+        content = target_path.read_text(encoding="utf-8")
+        return jsonify({"filename": target_path.name, "content": content, "size_bytes": len(content)}), 200
+    except Exception as exc:
+        return jsonify({"error": f"Could not read material: {exc}"}), 500
+
+
 @app.route("/api/upload", methods=["POST"])
 def upload_material() -> tuple[dict, int]:
     uploaded = request.files.get("file")
@@ -300,33 +378,67 @@ def materials() -> tuple[dict, int]:
 
 
 def _get_or_create_progress() -> dict:
+    default_progress = {
+        "completed_topics": 0,
+        "study_hours": 0.0,
+        "quizzes_completed": 0,
+        "streak_days": 1,
+        "badges": ["First Steps"],
+    }
     if not PROGRESS_PATH.exists():
-        return {"completed_topics": 0, "study_hours": 0.0, "quizzes_completed": 0}
+        return default_progress
     try:
-        return json.loads(PROGRESS_PATH.read_text(encoding="utf-8"))
+        data = json.loads(PROGRESS_PATH.read_text(encoding="utf-8"))
+        # Ensure keys exist
+        data.setdefault("streak_days", 1)
+        data.setdefault("badges", ["First Steps"])
+        # Evaluate badges dynamically based on milestones
+        badges = set(data.get("badges", []))
+        badges.add("First Steps")
+        if data.get("completed_topics", 0) >= 1:
+            badges.add("Curriculum Explorer")
+        if data.get("study_hours", 0.0) >= 0.25:
+            badges.add("Focus Titan")
+        if data.get("quizzes_completed", 0) >= 1:
+            badges.add("Quiz Ace")
+        data["badges"] = sorted(list(badges))
+        return data
     except Exception:
-        return {"completed_topics": 0, "study_hours": 0.0, "quizzes_completed": 0}
+        return default_progress
 
 
 @app.route("/api/progress", methods=["GET", "POST"])
 def progress() -> tuple[dict, int]:
+    current = _get_or_create_progress()
     if request.method == "POST":
         payload = request.get_json(silent=True) or {}
         try:
-            completed_topics = int(payload.get("completed_topics", 0) or 0)
-            study_hours = float(payload.get("study_hours", 0) or 0)
-            quizzes_completed = int(payload.get("quizzes_completed", 0) or 0)
+            completed_topics = int(payload.get("completed_topics", current.get("completed_topics", 0)) or 0)
+            study_hours = float(payload.get("study_hours", current.get("study_hours", 0.0)) or 0)
+            quizzes_completed = int(payload.get("quizzes_completed", current.get("quizzes_completed", 0)) or 0)
+            streak_days = int(payload.get("streak_days", current.get("streak_days", 1)) or 1)
         except (TypeError, ValueError):
             return jsonify({"error": "Progress values must be numbers."}), 400
-        current = {
-            "completed_topics": max(0, completed_topics),
-            "study_hours": max(0.0, round(study_hours, 2)),
-            "quizzes_completed": max(0, quizzes_completed),
-        }
+
+        current["completed_topics"] = max(0, completed_topics)
+        current["study_hours"] = max(0.0, round(study_hours, 2))
+        current["quizzes_completed"] = max(0, quizzes_completed)
+        current["streak_days"] = max(1, streak_days)
+
+        # Dynamic badge updates
+        badges = set(current.get("badges", ["First Steps"]))
+        if current["completed_topics"] >= 1:
+            badges.add("Curriculum Explorer")
+        if current["study_hours"] >= 0.25:
+            badges.add("Focus Titan")
+        if current["quizzes_completed"] >= 1:
+            badges.add("Quiz Ace")
+        current["badges"] = sorted(list(badges))
+
         PROGRESS_PATH.write_text(json.dumps(current, indent=2), encoding="utf-8")
         return jsonify(current), 200
 
-    return jsonify(_get_or_create_progress()), 200
+    return jsonify(current), 200
 
 
 if __name__ == "__main__":
