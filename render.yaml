@@ -11,6 +11,8 @@ services:
         value: 3.11.9
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
+      - key: GEMINI_TIMEOUT
+        value: "15"
       - key: OLLAMA_MODEL
         value: nemotron-3-nano:30b
       - key: OLLAMA_ENABLED

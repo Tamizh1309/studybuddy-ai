@@ -13,6 +13,7 @@ class GeminiClient:
         self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.timeout = float(os.getenv("GEMINI_TIMEOUT", "15"))
 
     def is_available(self) -> bool:
         return bool(self.api_key)
@@ -40,7 +41,7 @@ class GeminiClient:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=60) as response:
+            with urlopen(request, timeout=self.timeout) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Gemini is unavailable: {exc}") from exc
