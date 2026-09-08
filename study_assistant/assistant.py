@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -9,6 +10,29 @@ from .memory import ConversationMemory
 from .gemini_client import GeminiClient
 from .groq_client import GroqClient
 from .ollama_client import OllamaClient
+
+
+def _load_local_env() -> None:
+    """Load key-values from local .env into os.environ if not already set."""
+    candidates = [
+        Path.cwd() / ".env",
+        Path(__file__).resolve().parents[1] / ".env",
+    ]
+    for env_path in candidates:
+        if env_path.exists():
+            try:
+                for line in env_path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip().strip("'").strip('"')
+                    if key and key not in os.environ:
+                        os.environ[key] = value
+                break
+            except Exception:
+                pass
 
 
 @dataclass
@@ -24,11 +48,36 @@ class StudyAssistant:
     ollama: OllamaClient = field(init=False)
 
     def __post_init__(self) -> None:
+        _load_local_env()
         self.knowledge = KnowledgeBase(self.materials_dir)
         self.memory = ConversationMemory(self.memory_path)
         self.gemini = GeminiClient()
         self.groq = GroqClient()
         self.ollama = OllamaClient()
+
+    def has_gemini(self) -> bool:
+        return self.gemini.is_available()
+
+    def has_groq(self) -> bool:
+        return self.groq.is_available()
+
+    def has_ollama(self) -> bool:
+        return self.ollama.is_available()
+
+    def has_active_ai_provider(self) -> bool:
+        return self.has_gemini() or self.has_groq() or self.has_ollama()
+
+    @property
+    def gemini_model(self) -> str:
+        return self.gemini.model
+
+    @property
+    def groq_model(self) -> str:
+        return self.groq.model
+
+    @property
+    def ollama_model(self) -> str:
+        return self.ollama.model
 
     def answer_question(
         self,
