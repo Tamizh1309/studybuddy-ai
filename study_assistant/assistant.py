@@ -85,69 +85,109 @@ class StudyAssistant:
         subject: str = "Any subject",
         mode: str = "Explain",
         engine: str = "auto",
+        rag_mode: str = "hybrid",
     ) -> str:
+        return self.answer_question_structured(
+            question, subject=subject, mode=mode, engine=engine, rag_mode=rag_mode
+        )["answer"]
+
+    def answer_question_structured(
+        self,
+        question: str,
+        subject: str = "Any subject",
+        mode: str = "Explain",
+        engine: str = "auto",
+        rag_mode: str = "hybrid",
+    ) -> dict:
+        retrieved_chunks = self.knowledge.search_with_metadata(question, limit=3)
+        sources = sorted(list({c["source"] for c in retrieved_chunks if c.get("source")}))
         context = self.knowledge.get_context(question, limit=3)
+        has_matched_context = bool(retrieved_chunks) and "No course material matched" not in context
+
+        # In Strict RAG mode, require matching course materials
+        if rag_mode == "strict" and not has_matched_context:
+            strict_answer = (
+                f"🛡️ **Strict RAG Mode Notice:**\n\n"
+                f"No relevant course materials or syllabus passages matched: **\"{question}\"**.\n\n"
+                f"Under **Strict RAG Mode**, responses are exclusively grounded in your uploaded documents to prevent any hallucination. "
+                f"To get an answer, please upload syllabus or lecture notes in the **Library** tab, "
+                f"or switch the RAG Mode toggle to **⚡ Hybrid RAG** in the top navigation."
+            )
+            self.memory.add_turn(question, strict_answer)
+            return {
+                "answer": strict_answer,
+                "sources": [],
+                "rag_mode": "strict",
+                "retrieved_chunks": [],
+                "context_matched": False,
+            }
+
         answer: Optional[str] = None
 
         if engine == "gemini":
             try:
-                answer = self.gemini.chat(question, context, subject, mode)
+                answer = self.gemini.chat(question, context, subject, mode, rag_mode=rag_mode)
             except RuntimeError:
-                # If selected engine fails, gracefully cascade to other active providers
                 for client in (self.groq, self.ollama):
                     if client.is_available():
                         try:
-                            answer = client.chat(question, context, subject, mode)
+                            answer = client.chat(question, context, subject, mode, rag_mode=rag_mode)
                             break
                         except RuntimeError:
                             pass
                 if answer is None:
-                    answer = self._fallback_answer(question, context)
+                    answer = self._fallback_answer(question, context, rag_mode=rag_mode)
         elif engine == "groq":
             try:
-                answer = self.groq.chat(question, context, subject, mode)
+                answer = self.groq.chat(question, context, subject, mode, rag_mode=rag_mode)
             except RuntimeError:
                 for client in (self.gemini, self.ollama):
                     if client.is_available():
                         try:
-                            answer = client.chat(question, context, subject, mode)
+                            answer = client.chat(question, context, subject, mode, rag_mode=rag_mode)
                             break
                         except RuntimeError:
                             pass
                 if answer is None:
-                    answer = self._fallback_answer(question, context)
+                    answer = self._fallback_answer(question, context, rag_mode=rag_mode)
         elif engine == "ollama":
             try:
-                answer = self.ollama.chat(question, context, subject, mode)
+                answer = self.ollama.chat(question, context, subject, mode, rag_mode=rag_mode)
             except RuntimeError:
                 for client in (self.gemini, self.groq):
                     if client.is_available():
                         try:
-                            answer = client.chat(question, context, subject, mode)
+                            answer = client.chat(question, context, subject, mode, rag_mode=rag_mode)
                             break
                         except RuntimeError:
                             pass
                 if answer is None:
-                    answer = self._fallback_answer(question, context)
+                    answer = self._fallback_answer(question, context, rag_mode=rag_mode)
         elif engine == "local":
-            answer = self._fallback_answer(question, context)
+            answer = self._fallback_answer(question, context, rag_mode=rag_mode)
         else:
             # Auto cascading fallback: Gemini -> Groq -> Ollama -> local RAG
             for client in (self.gemini, self.groq, self.ollama):
                 if client.is_available():
                     try:
-                        answer = client.chat(question, context, subject, mode)
+                        answer = client.chat(question, context, subject, mode, rag_mode=rag_mode)
                         break
                     except RuntimeError:
                         continue
 
             if answer is None:
-                answer = self._fallback_answer(question, context)
+                answer = self._fallback_answer(question, context, rag_mode=rag_mode)
 
         self.memory.add_turn(question, answer)
-        return answer
+        return {
+            "answer": answer,
+            "sources": sources,
+            "rag_mode": rag_mode,
+            "retrieved_chunks": retrieved_chunks,
+            "context_matched": has_matched_context,
+        }
 
-    def _fallback_answer(self, question: str, context: str) -> str:
+    def _fallback_answer(self, question: str, context: str, rag_mode: str = "hybrid") -> str:
         q_clean = question.lower().strip().rstrip("!?.,")
         # Handle greetings
         if q_clean in {"hi", "hello", "hey", "hola", "greetings", "good morning", "good afternoon", "good evening", "sup"}:
@@ -173,6 +213,12 @@ class StudyAssistant:
             )
 
         if "No course material matched" in context:
+            if rag_mode == "strict":
+                return (
+                    f"🛡️ **Strict RAG Mode:** No course material in your library covers **\"{question}\"**.\n\n"
+                    "In Strict RAG mode, external AI speculation is turned off to ensure 100% precision. "
+                    "Please upload the relevant documents in the **Library** tab or switch to **Hybrid RAG**."
+                )
             return (
                 f"**Regarding '{question}':**\n\n"
                 "I didn't find specific passages covering this in your currently uploaded course materials, "
@@ -646,11 +692,24 @@ class StudyAssistant:
 
     def _build_answer_from_context(self, question: str, context: str) -> str:
         first_match = context.split("\n\n")[0]
-        quote = first_match.replace("[", "").replace("]", "").split(" ", 1)[1] if "[" in first_match else first_match
+        quote = first_match
+        citation = ""
+        if first_match.startswith("[Source:"):
+            parts = first_match.split("]\n", 1)
+            if len(parts) == 2:
+                citation = parts[0].replace("[", "").replace("]", "")
+                quote = parts[1]
+        elif "[" in first_match and "]" in first_match:
+            parts = first_match.split("] ", 1)
+            if len(parts) == 2:
+                quote = parts[1]
+
+        clean_quote = quote.strip()[:320].rstrip()
+        citation_suffix = f"\n\n📚 *Grounded via: {citation}*" if citation else ""
         return (
             f"Based on the course material, {question} is best explained by the key idea that: "
-            f"{quote[:300].rstrip()}. "
-            "In short, the material emphasizes the core concept, supporting examples, and relevant terminology."
+            f"{clean_quote}. "
+            f"In short, the material emphasizes the core concept, supporting examples, and relevant terminology.{citation_suffix}"
         )
 
     def get_memory_summary(self) -> str:

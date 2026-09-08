@@ -81,10 +81,14 @@ def answer() -> tuple[dict, int]:
     subject = (payload.get("subject") or "Any subject").strip()
     mode = (payload.get("mode") or "Explain").strip()
     engine = (payload.get("engine") or "auto").strip().lower()
+    rag_mode = (payload.get("rag_mode") or "hybrid").strip().lower()
     if not question:
         return jsonify({"error": "Question is required."}), 400
 
-    return jsonify({"answer": assistant.answer_question(question, subject, mode, engine=engine)}), 200
+    result = assistant.answer_question_structured(
+        question, subject=subject, mode=mode, engine=engine, rag_mode=rag_mode
+    )
+    return jsonify(result), 200
 
 
 @app.route("/api/plan", methods=["POST"])

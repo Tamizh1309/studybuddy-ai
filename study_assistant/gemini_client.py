@@ -18,15 +18,36 @@ class GeminiClient:
     def is_available(self) -> bool:
         return bool(self.api_key)
 
-    def chat(self, prompt: str, context: str = "", subject: str = "Any subject", mode: str = "Explain") -> str:
+    def chat(
+        self,
+        prompt: str,
+        context: str = "",
+        subject: str = "Any subject",
+        mode: str = "Explain",
+        rag_mode: str = "hybrid",
+    ) -> str:
         if not self.api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured.")
 
+        if rag_mode == "strict":
+            system_role = (
+                "You are StudyBuddy AI operating in STRICT RAG (Retrieval-Augmented Generation) mode. "
+                "You must strictly and solely ground your answer in the provided Course Context. "
+                "Quote or cite the source file/chunk names (e.g. [Source: filename.pdf]) whenever applicable. "
+                "If the provided course context does not contain sufficient details to answer the student's question, "
+                "explicitly inform the student that their uploaded course notes do not contain this information, "
+                "and do not fabricate or hallucinate answers beyond the provided context."
+            )
+        else:
+            system_role = (
+                "You are StudyBuddy AI, an agentic AI tutor and RAG-powered learning assistant. "
+                "Always prioritize and cite the provided Course Context as the primary source of truth. "
+                "When relevant, cite matching documents using [Source: filename]. If context is partial or absent, "
+                "clearly indicate that you are supplementing with general academic knowledge."
+            )
+
         instructions = (
-            "You are StudyBuddy AI, a versatile AI tutor and general question-answering assistant. "
-            "Answer academic, technical, planning, writing, and everyday questions accurately. "
-            "Use the course context as the primary source when relevant, but answer general questions "
-            "when context is unavailable. Be structured, practical, and honest about uncertainty. "
+            f"{system_role}\n"
             f"The selected subject is {subject}. The requested response style is {mode}.\n\n"
             f"Course context:\n{context or 'No course context was retrieved.'}\n\n"
             f"Student question:\n{prompt}"

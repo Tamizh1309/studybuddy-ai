@@ -38,12 +38,15 @@ def test_api_ai_status(client):
 def test_api_answer(client):
     response = client.post(
         "/api/answer",
-        json={"question": "What is AI?", "subject": "CS", "mode": "Explain", "engine": "local"},
+        json={"question": "What is AI?", "subject": "CS", "mode": "Explain", "engine": "local", "rag_mode": "hybrid"},
     )
     assert response.status_code == 200
     data = response.get_json()
     assert "answer" in data
     assert len(data["answer"]) > 0
+    assert "sources" in data
+    assert "rag_mode" in data
+    assert data["rag_mode"] == "hybrid"
 
 
 def test_api_flashcards(client):

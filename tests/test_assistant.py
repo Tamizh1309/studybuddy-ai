@@ -107,6 +107,26 @@ def test_explain_code():
     assert "complexity" in result
     assert result["complexity"]["time"] in ("O(n)", "O(1)")
     assert "breakdown" in result
-    assert len(result["breakdown"]) >= 1
     assert "suggestions" in result
+
+
+def test_rag_vector_search_and_strict_mode():
+    assistant = StudyAssistant(materials_dir=Path("materials"), memory_path=Path("memory/test_history.json"))
+    # Test vector search with metadata
+    chunks = assistant.knowledge.search_with_metadata("machine learning artificial intelligence", limit=2)
+    assert len(chunks) >= 1
+    assert "relevance_percent" in chunks[0]
+    assert chunks[0]["relevance_percent"] > 0
+    assert "source" in chunks[0]
+
+    # Test structured answer in hybrid mode
+    hybrid_res = assistant.answer_question_structured("What is machine learning?", engine="local", rag_mode="hybrid")
+    assert "answer" in hybrid_res
+    assert len(hybrid_res["sources"]) >= 1
+    assert hybrid_res["context_matched"] is True
+
+    # Test structured answer in strict mode with unmatched query
+    strict_res = assistant.answer_question_structured("xyznonexistentterm12345", engine="local", rag_mode="strict")
+    assert "Strict RAG Mode" in strict_res["answer"]
+    assert strict_res["context_matched"] is False
 

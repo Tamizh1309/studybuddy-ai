@@ -4,6 +4,7 @@
 // --- State Management ---
 const state = {
   selectedEngine: localStorage.getItem('studybuddy-engine') || 'auto',
+  selectedRagMode: localStorage.getItem('studybuddy-rag-mode') || 'hybrid',
   currentQuiz: null,
   userQuizAnswers: {},
   flashcards: [],
@@ -31,6 +32,7 @@ const state = {
 
 // --- DOM References ---
 const aiEngineSelect = document.getElementById('ai-engine-select');
+const ragModeSelect = document.getElementById('rag-mode-select');
 const navStatus = document.getElementById('nav-status');
 const ollamaStatus = document.getElementById('ollama-status');
 const themeButton = document.getElementById('theme-button');
@@ -277,6 +279,14 @@ if (aiEngineSelect) {
   });
 }
 
+if (ragModeSelect) {
+  ragModeSelect.value = state.selectedRagMode;
+  ragModeSelect.addEventListener('change', (e) => {
+    state.selectedRagMode = e.target.value;
+    localStorage.setItem('studybuddy-rag-mode', state.selectedRagMode);
+  });
+}
+
 async function loadAiStatus() {
   try {
     const response = await fetch('/api/ai-status');
@@ -438,8 +448,17 @@ if (voiceMicBtn) {
   });
 }
 
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // --- Tab 1: AI Tutor (Chat) ---
-function appendChatMessage(sender, text, isMarkdown = true) {
+function appendChatMessage(sender, text, isMarkdown = true, sources = [], retrievedChunks = [], ragMode = 'hybrid') {
   const isBot = sender === 'bot';
   const messageDiv = document.createElement('div');
   messageDiv.className = `chat-message ${isBot ? 'bot-message' : 'user-message'}`;
@@ -465,6 +484,59 @@ function appendChatMessage(sender, text, isMarkdown = true) {
 
   body.appendChild(header);
   body.appendChild(content);
+
+  // Render Interactive RAG Citations Drawer
+  if (isBot && retrievedChunks && retrievedChunks.length > 0) {
+    const citationBox = document.createElement('div');
+    citationBox.className = 'rag-citation-box';
+
+    const citationHeader = document.createElement('div');
+    citationHeader.className = 'rag-citation-header';
+    citationHeader.innerHTML = `
+      <span class="rag-badge ${ragMode === 'strict' ? 'strict' : 'hybrid'}">
+        ${ragMode === 'strict' ? '🛡️ Strict RAG' : '⚡ Grounded RAG'}
+      </span>
+      <span class="rag-sources-label">📚 Grounded in ${retrievedChunks.length} course passage${retrievedChunks.length > 1 ? 's' : ''}</span>
+    `;
+    citationBox.appendChild(citationHeader);
+
+    const pillsList = document.createElement('div');
+    pillsList.className = 'rag-citation-pills';
+
+    retrievedChunks.forEach((chunk) => {
+      const item = document.createElement('div');
+      item.className = 'citation-pill-item';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'citation-pill-btn';
+      btn.innerHTML = `
+        <span class="citation-doc-name">📄 ${escapeHtml(chunk.source)}</span>
+        <span class="citation-match-tag">${chunk.relevance_percent || 85}% match ▾</span>
+      `;
+
+      const drawer = document.createElement('div');
+      drawer.className = 'citation-snippet-drawer';
+      drawer.textContent = chunk.snippet || chunk.full_text || 'Course content indexed.';
+
+      btn.addEventListener('click', () => {
+        drawer.classList.toggle('open');
+        const tag = btn.querySelector('.citation-match-tag');
+        if (tag) {
+          tag.textContent = drawer.classList.contains('open')
+            ? `${chunk.relevance_percent || 85}% match ▴`
+            : `${chunk.relevance_percent || 85}% match ▾`;
+        }
+      });
+
+      item.appendChild(btn);
+      item.appendChild(drawer);
+      pillsList.appendChild(item);
+    });
+
+    citationBox.appendChild(pillsList);
+    body.appendChild(citationBox);
+  }
 
   if (isBot) {
     const actions = document.createElement('div');
@@ -523,7 +595,7 @@ if (questionForm) {
     typingIndicator.className = 'chat-message bot-message typing-indicator';
     typingIndicator.innerHTML = `
       <div class="msg-avatar">✦</div>
-      <div class="msg-body"><div class="msg-content"><em>Thinking & consulting knowledge base...</em></div></div>
+      <div class="msg-body"><div class="msg-content"><em>Scanning vector index & retrieving course context...</em></div></div>
     `;
     chatViewport.appendChild(typingIndicator);
     chatViewport.scrollTop = chatViewport.scrollHeight;
@@ -536,10 +608,18 @@ if (questionForm) {
         subject,
         mode,
         engine: state.selectedEngine,
+        rag_mode: state.selectedRagMode,
       });
 
       typingIndicator.remove();
-      appendChatMessage('bot', data.answer);
+      appendChatMessage(
+        'bot',
+        data.answer,
+        true,
+        data.sources || [],
+        data.retrieved_chunks || [],
+        data.rag_mode || state.selectedRagMode
+      );
       loadMemory();
     } catch (error) {
       typingIndicator.remove();

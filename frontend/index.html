@@ -37,6 +37,14 @@
             </select>
           </div>
 
+          <div class="rag-selector-wrapper">
+            <label for="rag-mode-select" class="sr-only">RAG Grounding Mode</label>
+            <select id="rag-mode-select" title="Choose RAG Grounding Mode">
+              <option value="hybrid">⚡ Hybrid RAG (Docs + AI)</option>
+              <option value="strict">🛡️ Strict RAG (Docs Only)</option>
+            </select>
+          </div>
+
           <div class="status-pill" id="engine-status-pill">
             <span class="status-dot"></span>
             <span id="nav-status">Connecting...</span>
